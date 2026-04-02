@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Hiragana Trainer v1.6</title>
+<title>Kana Trainer v1.7</title>
 <style>
     :root {
         --bg-1: #0d0d0d;
@@ -20,9 +20,7 @@
         --card-bg-bottom: #151515;
     }
 
-    * {
-        box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
         margin: 0;
@@ -118,9 +116,7 @@
         letter-spacing: 1px;
     }
 
-    .input-wrap {
-        margin-top: 8px;
-    }
+    .input-wrap { margin-top: 8px; }
 
     input[type="text"], input[type="number"], textarea {
         width: min(260px, 90%);
@@ -134,9 +130,7 @@
         outline: none;
     }
 
-    input[type="number"] {
-        font-size: 18px;
-    }
+    input[type="number"] { font-size: 18px; }
 
     input[type="text"]:focus,
     input[type="number"]:focus,
@@ -171,9 +165,7 @@
         color: var(--muted);
     }
 
-    .trial-box input {
-        width: 120px;
-    }
+    .trial-box input { width: 120px; }
 
     .game-over {
         margin-top: 16px;
@@ -204,18 +196,14 @@
         font-size: 15px;
     }
 
-    .btn:hover {
-        background: #2d2d2d;
-    }
+    .btn:hover { background: #2d2d2d; }
 
     .btn-danger {
         background: #472323;
         border-color: #6c3030;
     }
 
-    .btn-danger:hover {
-        background: #5b2c2c;
-    }
+    .btn-danger:hover { background: #5b2c2c; }
 
     .btn-start {
         background: #224a29;
@@ -223,18 +211,14 @@
         font-weight: 700;
     }
 
-    .btn-start:hover {
-        background: #2a5e34;
-    }
+    .btn-start:hover { background: #2a5e34; }
 
     .btn-secondary {
         background: #1f2f47;
         border-color: #36527c;
     }
 
-    .btn-secondary:hover {
-        background: #294061;
-    }
+    .btn-secondary:hover { background: #294061; }
 
     .start-wrap,
     .session-actions {
@@ -260,13 +244,8 @@
         flex-direction: column;
     }
 
-    .left-panel {
-        left: 12px;
-    }
-
-    .right-panel {
-        right: 12px;
-    }
+    .left-panel { left: 12px; }
+    .right-panel { right: 12px; }
 
     .panel-header {
         background: var(--panel-2);
@@ -288,9 +267,7 @@
         min-height: 0;
     }
 
-    .panel-content.hidden {
-        display: none;
-    }
+    .panel-content.hidden { display: none; }
 
     .heatmap {
         display: grid;
@@ -310,9 +287,7 @@
         border: 1px solid rgba(255,255,255,0.08);
     }
 
-    .cell:hover {
-        outline: 2px solid rgba(255,255,255,0.15);
-    }
+    .cell:hover { outline: 2px solid rgba(255,255,255,0.15); }
 
     .score-block {
         background: #222;
@@ -337,9 +312,7 @@
         font-size: 14px;
     }
 
-    .score-row:last-child {
-        border-bottom: none;
-    }
+    .score-row:last-child { border-bottom: none; }
 
     .popup {
         position: fixed;
@@ -384,13 +357,8 @@
         border-right: 1px solid var(--border);
     }
 
-    .tab-button:last-child {
-        border-right: none;
-    }
-
-    .tab-button.active {
-        background: #171717;
-    }
+    .tab-button:last-child { border-right: none; }
+    .tab-button.active { background: #171717; }
 
     .drawer-content {
         display: none;
@@ -403,9 +371,7 @@
         overflow-y: auto;
     }
 
-    .drawer-content.open {
-        display: block;
-    }
+    .drawer-content.open { display: block; }
 
     .section-title {
         margin: 0 0 10px;
@@ -469,9 +435,7 @@
         text-align: center;
     }
 
-    .file-input {
-        display: none;
-    }
+    .file-input { display: none; }
 
     .version-tag {
         text-align: center;
@@ -492,9 +456,7 @@
         overflow-y: auto;
     }
 
-    .modal-backdrop.open {
-        display: flex;
-    }
+    .modal-backdrop.open { display: flex; }
 
     .modal {
         width: min(520px, 100%);
@@ -559,9 +521,7 @@
         border-bottom: 1px solid rgba(255,255,255,0.05);
     }
 
-    .session-list-item:last-child {
-        border-bottom: none;
-    }
+    .session-list-item:last-child { border-bottom: none; }
 
     .modal-actions {
         position: sticky;
@@ -601,13 +561,8 @@
         padding: 22px 18px 220px;
     }
 
-    body.mobile-mode .hiragana {
-        font-size: 108px;
-    }
-
-    body.mobile-mode .score-pill {
-        padding: 10px 12px;
-    }
+    body.mobile-mode .hiragana { font-size: 108px; }
+    body.mobile-mode .score-pill { padding: 10px 12px; }
 
     body.mobile-mode input[type="text"] {
         width: 100%;
@@ -643,9 +598,7 @@
     }
 
     @media (max-width: 1180px) {
-        .left-panel, .right-panel {
-            width: 220px;
-        }
+        .left-panel, .right-panel { width: 220px; }
     }
 
     @media (max-width: 920px) {
@@ -654,21 +607,10 @@
             padding-top: 18px;
         }
 
-        .left-panel {
-            left: 10px;
-        }
-
-        .right-panel {
-            right: 10px;
-        }
-
-        .left-panel, .right-panel {
-            width: 200px;
-        }
-
-        .main {
-            padding-bottom: 205px;
-        }
+        .left-panel { left: 10px; }
+        .right-panel { right: 10px; }
+        .left-panel, .right-panel { width: 200px; }
+        .main { padding-bottom: 205px; }
     }
 
     @media (max-width: 760px) {
@@ -677,9 +619,7 @@
             padding: 12px;
         }
 
-        .app-shell {
-            display: block;
-        }
+        .app-shell { display: block; }
 
         .main {
             width: 100%;
@@ -701,9 +641,7 @@
             border-radius: 14px;
         }
 
-        .modal-grid {
-            grid-template-columns: 1fr;
-        }
+        .modal-grid { grid-template-columns: 1fr; }
 
         .drawer-content {
             min-height: 320px;
@@ -715,7 +653,7 @@
 <body>
 <div class="app-shell">
     <div class="main">
-        <h1>Hiragana Trainer</h1>
+        <h1>Kana Trainer</h1>
         <div class="subline">Enter the matching romaji</div>
 
         <div class="scoreline">
@@ -737,12 +675,12 @@
 
         <div class="trial-config" id="trialConfig">
             <div class="trial-box">
-                <label for="trialTime">Time</label>
-                <input id="trialTime" type="number" min="0.1" step="0.1" value="1" />
+                <label for="trialTime">Time (mins)</label>
+                <input id="trialTime" type="number" min="0.1" step="0.1" value="0.5" />
             </div>
             <div class="trial-box">
                 <label for="trialTarget">Target</label>
-                <input id="trialTarget" type="number" min="1" step="1" value="10" />
+                <input id="trialTarget" type="number" min="1" step="1" value="20" />
             </div>
         </div>
 
@@ -824,7 +762,7 @@
             <div>
                 <div class="section-title">Options</div>
                 <div id="optionButtons" class="button-grid"></div>
-                <div class="version-tag">v1.6</div>
+                <div class="version-tag">v1.7</div>
             </div>
 
             <div>
@@ -957,13 +895,10 @@ function loadJSON(key, fallback) {
 function formatDuration(ms) {
     if (!Number.isFinite(ms) || ms <= 0) return "0 ms";
     if (ms < 1000) return `${Math.round(ms)} ms`;
-
     const seconds = ms / 1000;
     if (seconds < 60) return `${seconds.toFixed(1)} seconds`;
-
     const minutes = seconds / 60;
     if (minutes < 60) return `${minutes.toFixed(1)} minutes`;
-
     const hours = minutes / 60;
     return `${hours.toFixed(1)} hours`;
 }
@@ -1091,21 +1026,10 @@ function ensureDataObjects() {
     }
 }
 
-function getAverageTime(char) {
-    return times[char]?.avg ?? 1200;
-}
-
-function getStats(char) {
-    return stats[char] ?? { correct: 0, wrong: 0 };
-}
-
-function getSrs(char) {
-    return srs[char] ?? { level: 0, due: 0, lastSeen: 0, lastWrong: 0 };
-}
-
-function validRomajiSet() {
-    return new Set(Object.values(charMap));
-}
+function getAverageTime(char) { return times[char]?.avg ?? 1200; }
+function getStats(char) { return stats[char] ?? { correct: 0, wrong: 0 }; }
+function getSrs(char) { return srs[char] ?? { level: 0, due: 0, lastSeen: 0, lastWrong: 0 }; }
+function validRomajiSet() { return new Set(Object.values(charMap)); }
 
 function updateTopStats() {
     streakEl.textContent = streak;
@@ -1113,9 +1037,9 @@ function updateTopStats() {
     endlessTotalEl.textContent = endlessRunTotal;
     endlessWrongEl.textContent = endlessRunWrong;
 
-    const showEndless = settings.endless && sessionStarted;
-    endlessTotalPill.style.display = showEndless ? "inline-block" : "none";
-    endlessWrongPill.style.display = showEndless ? "inline-block" : "none";
+    const showContinuous = (settings.endless || settings.timeTrial) && sessionStarted;
+    endlessTotalPill.style.display = showContinuous ? "inline-block" : "none";
+    endlessWrongPill.style.display = showContinuous ? "inline-block" : "none";
 
     const showTrial = settings.timeTrial && sessionStarted;
     trialTimerPill.style.display = showTrial ? "inline-block" : "none";
@@ -1169,9 +1093,7 @@ function setBottomTab(tabName) {
     saveAll();
 }
 
-function isModeLocked() {
-    return sessionStarted;
-}
+function isModeLocked() { return sessionStarted; }
 
 function makeToggleButton(label, active, onClick, disabled = false) {
     const div = document.createElement("div");
@@ -1188,10 +1110,10 @@ function buildModifierButtons() {
     const modes = [
         ["hint", "Hint Mode"],
         ["endless", "Endless Mode"],
+        ["timeTrial", "Time Trial Mode"],
         ["focusWeak", "Focus Weak"],
         ["onlyMistakes", "Only Mistakes"],
-        ["dakuten", "Dakuten"],
-        ["timeTrial", "Time Trial Mode"]
+        ["dakuten", "Dakuten"]
     ];
 
     const container = document.getElementById("modifierOptions");
@@ -1307,10 +1229,7 @@ function renderHeatmap() {
     }
 }
 
-function closePopup() {
-    popupEl.style.display = "none";
-}
-
+function closePopup() { popupEl.style.display = "none"; }
 document.addEventListener("click", closePopup);
 
 function onSettingsChanged() {
@@ -1327,9 +1246,7 @@ function onSettingsChanged() {
     renderScoreHistory();
     saveAll();
 
-    if (sessionStarted && !locked) {
-        nextCharacter();
-    }
+    if (sessionStarted && !locked) nextCharacter();
 }
 
 function getEligiblePool() {
@@ -1446,7 +1363,6 @@ function startTrialTimer(durationMinutes) {
     const tick = () => {
         const remaining = Math.max(0, trialEndTime - Date.now());
         trialTimerEl.textContent = formatCountdown(remaining);
-
         if (remaining <= 0) {
             stopTrialTimer();
             endSession(true);
@@ -1462,6 +1378,7 @@ function stopTrialTimer() {
         clearInterval(trialTimerId);
         trialTimerId = null;
     }
+    trialTimerPill.style.display = "none";
 }
 
 function startSession() {
@@ -1481,8 +1398,8 @@ function startSession() {
     inputEl.disabled = false;
 
     if (settings.timeTrial) {
-        const timeMinutes = Math.max(0.1, Number(trialTimeEl.value) || 1);
-        trialTarget = Math.max(1, Number(trialTargetEl.value) || 10);
+        const timeMinutes = Math.max(0.1, Number(trialTimeEl.value) || 0.5);
+        trialTarget = Math.max(1, Number(trialTargetEl.value) || 20);
         startTrialTimer(timeMinutes);
     } else {
         trialTarget = 0;
@@ -1561,9 +1478,7 @@ function handleCorrect() {
     sessionStats.bestStreak = Math.max(sessionStats.bestStreak, streak);
     updateSessionChar(currentChar, true, timeTaken);
 
-    if (currentFlowModeIsContinuous()) {
-        endlessRunTotal += 1;
-    }
+    if (currentFlowModeIsContinuous()) endlessRunTotal += 1;
 
     updateTopStats();
     renderHeatmap();
@@ -1653,14 +1568,21 @@ function updateBestScores() {
     }
 
     if (settings.timeTrial) {
+        const timeVal = Number(trialTimeEl.value) || 0.5;
         const entry = {
-            time: Number(trialTimeEl.value) || 1,
-            target: trialTarget || Math.max(1, Number(trialTargetEl.value) || 10),
-            score: sessionStats.correct
+            time: timeVal,
+            target: trialTarget || Math.max(1, Number(trialTargetEl.value) || 20),
+            score: sessionStats.correct,
+            ratio: sessionStats.correct / Math.max(0.1, timeVal),
+            overTarget: sessionStats.correct - (trialTarget || Math.max(1, Number(trialTargetEl.value) || 20))
         };
 
         scoreHistory.timeTrialTop3.push(entry);
-        scoreHistory.timeTrialTop3.sort((a, b) => b.score - a.score);
+        scoreHistory.timeTrialTop3.sort((a, b) => {
+            if (b.overTarget !== a.overTarget) return b.overTarget - a.overTarget;
+            if (b.ratio !== a.ratio) return b.ratio - a.ratio;
+            return b.score - a.score;
+        });
         scoreHistory.timeTrialTop3 = scoreHistory.timeTrialTop3.slice(0, 3);
     }
 
@@ -1672,7 +1594,6 @@ function getSessionDifficultyLists() {
     const entries = Object.entries(sessionStats.perChar).map(([char, data]) => {
         const attempts = data.correct + data.wrong;
         const accuracy = attempts ? (data.correct / attempts) : 0;
-
         return {
             char,
             correct: data.correct,
@@ -1797,7 +1718,7 @@ sessionModalBackdrop.addEventListener("click", (e) => {
 
 function makeExportPayload() {
     return {
-        version: "1.6",
+        version: "1.7",
         exportedAt: new Date().toISOString(),
         settings,
         stats,
@@ -1815,7 +1736,7 @@ function exportData() {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "hiragana-trainer-save.json";
+    a.download = "kana-trainer-save.json";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -1975,37 +1896,6 @@ scoresHeaderEl.addEventListener("click", () => {
     applyPanelStates();
     saveAll();
 });
-
-function updateTrialConfigVisibility() {
-    trialConfigEl.style.display = settings.timeTrial ? "flex" : "none";
-}
-
-function stopTrialTimer() {
-    if (trialTimerId) {
-        clearInterval(trialTimerId);
-        trialTimerId = null;
-    }
-    trialTimerPill.style.display = "none";
-}
-
-function startTrialTimer(durationMinutes) {
-    stopTrialTimer();
-    trialEndTime = Date.now() + durationMinutes * 60 * 1000;
-    trialTimerPill.style.display = "inline-block";
-
-    const tick = () => {
-        const remaining = Math.max(0, trialEndTime - Date.now());
-        trialTimerEl.textContent = formatCountdown(remaining);
-
-        if (remaining <= 0) {
-            stopTrialTimer();
-            endSession(true);
-        }
-    };
-
-    tick();
-    trialTimerId = setInterval(tick, 100);
-}
 
 function init() {
     rebuildCharMap();
