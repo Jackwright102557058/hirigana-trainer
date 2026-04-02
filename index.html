@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Hiragana Trainer</title>
+<title>Hiragana Trainer v1.4</title>
 <style>
     :root {
         --bg-1: #0d0d0d;
@@ -49,7 +49,7 @@
         border: 1px solid var(--border);
         border-radius: 20px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-        padding: 28px 28px 160px;
+        padding: 28px 28px 190px;
         text-align: center;
         position: relative;
     }
@@ -69,7 +69,7 @@
     .scoreline {
         display: flex;
         justify-content: center;
-        gap: 18px;
+        gap: 12px;
         flex-wrap: wrap;
         margin-bottom: 18px;
         font-size: 15px;
@@ -290,32 +290,47 @@
         margin-bottom: 6px;
     }
 
-    .bottom-panel {
+    .bottom-shell {
         position: fixed;
         left: 0;
         right: 0;
         bottom: 0;
+        z-index: 15;
         background: var(--panel-2);
         border-top: 1px solid var(--border);
-        z-index: 15;
     }
 
-    .bottom-header {
+    .tab-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .tab-button {
         text-align: center;
         padding: 8px 12px;
         cursor: pointer;
         user-select: none;
         font-weight: 700;
+        border-right: 1px solid var(--border);
     }
 
-    .bottom-content {
+    .tab-button:last-child {
+        border-right: none;
+    }
+
+    .tab-button.active {
+        background: #171717;
+    }
+
+    .drawer-content {
         display: none;
         padding: 14px 16px 16px;
         background: #141414;
         border-top: 1px solid rgba(255,255,255,0.04);
+        width: 100%;
     }
 
-    .bottom-content.open {
+    .drawer-content.open {
         display: block;
     }
 
@@ -358,6 +373,8 @@
     .options-stack {
         display: grid;
         gap: 18px;
+        width: min(900px, 100%);
+        margin: 0 auto;
     }
 
     .bottom-actions {
@@ -376,6 +393,13 @@
 
     .file-input {
         display: none;
+    }
+
+    .version-tag {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 4px;
     }
 
     .modal-backdrop {
@@ -496,7 +520,7 @@
         width: 100%;
         max-width: 100%;
         margin: 0 auto 12px;
-        padding: 22px 18px 200px;
+        padding: 22px 18px 220px;
     }
 
     body.mobile-mode .hiragana {
@@ -552,7 +576,7 @@
         }
 
         .main {
-            padding-bottom: 175px;
+            padding-bottom: 205px;
         }
     }
 
@@ -600,6 +624,8 @@
         <div class="scoreline">
             <div class="score-pill">Streak: <span id="streak">0</span></div>
             <div class="score-pill">High Score: <span id="highScore">0</span></div>
+            <div class="score-pill" id="endlessTotalPill" style="display:none;">Total: <span id="endlessTotal">0</span></div>
+            <div class="score-pill" id="endlessWrongPill" style="display:none;">Incorrect: <span id="endlessWrong">0</span></div>
         </div>
 
         <div class="hiragana-wrap">
@@ -639,18 +665,32 @@
 
 <div id="popup" class="popup"></div>
 
-<div class="bottom-panel">
-    <div class="bottom-header" id="optionsHeader">Options ▼</div>
-    <div class="bottom-content" id="optionsContent">
+<div class="bottom-shell">
+    <div class="tab-row">
+        <div class="tab-button" id="modifiersTab">Modifiers ▼</div>
+        <div class="tab-button" id="optionsTab">Options ▼</div>
+    </div>
+
+    <div class="drawer-content" id="modifiersContent">
         <div class="options-stack">
             <div>
                 <div class="section-title">Modes</div>
-                <div id="modeOptions" class="button-grid"></div>
+                <div id="modifierOptions" class="button-grid"></div>
             </div>
 
             <div>
                 <div class="section-title">Rows</div>
                 <div id="rowOptions" class="rows-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="drawer-content" id="optionsContent">
+        <div class="options-stack">
+            <div>
+                <div class="section-title">Options</div>
+                <div id="optionButtons" class="button-grid"></div>
+                <div class="version-tag">v1.4</div>
             </div>
 
             <div>
@@ -731,7 +771,7 @@ const DEFAULT_SETTINGS = {
     endless: false,
     rows: Object.keys(rows),
     statsVisible: true,
-    optionsOpen: false
+    activeBottomTab: null
 };
 
 function createEmptySessionStats() {
@@ -766,16 +806,16 @@ function formatDuration(ms) {
 
     const seconds = ms / 1000;
     if (seconds < 60) {
-        return `${seconds.toFixed(seconds >= 10 ? 1 : 1)} seconds`;
+        return `${seconds.toFixed(1)} seconds`;
     }
 
     const minutes = seconds / 60;
     if (minutes < 60) {
-        return `${minutes.toFixed(minutes >= 10 ? 1 : 1)} minutes`;
+        return `${minutes.toFixed(1)} minutes`;
     }
 
     const hours = minutes / 60;
-    return `${hours.toFixed(hours >= 10 ? 1 : 1)} hours`;
+    return `${hours.toFixed(1)} hours`;
 }
 
 let settings = { ...DEFAULT_SETTINGS, ...loadJSON("settings", DEFAULT_SETTINGS) };
@@ -794,6 +834,9 @@ let locked = false;
 let sessionStarted = false;
 let sessionStats = createEmptySessionStats();
 
+let endlessRunTotal = 0;
+let endlessRunWrong = 0;
+
 const hiraganaEl = document.getElementById("hiragana");
 const hintEl = document.getElementById("hint");
 const inputEl = document.getElementById("input");
@@ -801,9 +844,15 @@ const gameOverEl = document.getElementById("gameOver");
 const gameOverAnswerEl = document.getElementById("gameOverAnswer");
 const streakEl = document.getElementById("streak");
 const highScoreEl = document.getElementById("highScore");
+const endlessTotalEl = document.getElementById("endlessTotal");
+const endlessWrongEl = document.getElementById("endlessWrong");
+const endlessTotalPill = document.getElementById("endlessTotalPill");
+const endlessWrongPill = document.getElementById("endlessWrongPill");
 const heatmapEl = document.getElementById("heatmap");
 const popupEl = document.getElementById("popup");
-const optionsHeaderEl = document.getElementById("optionsHeader");
+const modifiersTabEl = document.getElementById("modifiersTab");
+const optionsTabEl = document.getElementById("optionsTab");
+const modifiersContentEl = document.getElementById("modifiersContent");
 const optionsContentEl = document.getElementById("optionsContent");
 const statsHeaderEl = document.getElementById("statsHeader");
 const statsContentEl = document.getElementById("statsContent");
@@ -880,11 +929,23 @@ function validRomajiSet() {
 function updateTopStats() {
     streakEl.textContent = streak;
     highScoreEl.textContent = highScore;
+    endlessTotalEl.textContent = endlessRunTotal;
+    endlessWrongEl.textContent = endlessRunWrong;
+
+    const showEndless = settings.endless && sessionStarted;
+    endlessTotalPill.style.display = showEndless ? "inline-block" : "none";
+    endlessWrongPill.style.display = showEndless ? "inline-block" : "none";
 }
 
 function applyPanelStates() {
-    optionsContentEl.classList.toggle("open", settings.optionsOpen);
-    optionsHeaderEl.textContent = settings.optionsOpen ? "Options ▲" : "Options ▼";
+    modifiersContentEl.classList.toggle("open", settings.activeBottomTab === "modifiers");
+    optionsContentEl.classList.toggle("open", settings.activeBottomTab === "options");
+
+    modifiersTabEl.classList.toggle("active", settings.activeBottomTab === "modifiers");
+    optionsTabEl.classList.toggle("active", settings.activeBottomTab === "options");
+
+    modifiersTabEl.textContent = settings.activeBottomTab === "modifiers" ? "Modifiers ▲" : "Modifiers ▼";
+    optionsTabEl.textContent = settings.activeBottomTab === "options" ? "Options ▲" : "Options ▼";
 
     statsContentEl.classList.toggle("hidden", !settings.statsVisible);
     statsChevronEl.textContent = settings.statsVisible ? "▼" : "▲";
@@ -892,18 +953,44 @@ function applyPanelStates() {
     document.body.classList.toggle("mobile-mode", !!settings.mobileMode);
 }
 
-function buildModeButtons() {
+function setBottomTab(tabName) {
+    settings.activeBottomTab = settings.activeBottomTab === tabName ? null : tabName;
+    applyPanelStates();
+    saveAll();
+}
+
+function buildModifierButtons() {
     const modes = [
+        ["hint", "Hint Mode"],
+        ["endless", "Endless Mode"],
         ["focusWeak", "Focus Weak"],
         ["onlyMistakes", "Only Mistakes"],
-        ["dakuten", "Dakuten"],
-        ["hint", "Hint Mode"],
+        ["dakuten", "Dakuten"]
+    ];
+
+    const container = document.getElementById("modifierOptions");
+    container.innerHTML = "";
+
+    for (const [key, label] of modes) {
+        const div = document.createElement("div");
+        div.className = "toggle-btn" + (settings[key] ? " active" : "");
+        div.textContent = label;
+        div.onclick = () => {
+            settings[key] = !settings[key];
+            updateTopStats();
+            onSettingsChanged();
+        };
+        container.appendChild(div);
+    }
+}
+
+function buildOptionButtons() {
+    const modes = [
         ["srs", "SRS Mode"],
-        ["endless", "Endless"],
         ["mobileMode", "Mobile/iPad"]
     ];
 
-    const container = document.getElementById("modeOptions");
+    const container = document.getElementById("optionButtons");
     container.innerHTML = "";
 
     for (const [key, label] of modes) {
@@ -1001,10 +1088,12 @@ document.addEventListener("click", closePopup);
 function onSettingsChanged() {
     rebuildCharMap();
     ensureDataObjects();
-    buildModeButtons();
+    buildModifierButtons();
+    buildOptionButtons();
     buildRowButtons();
     applyPanelStates();
     renderHeatmap();
+    updateTopStats();
     saveAll();
 
     if (sessionStarted && !locked) {
@@ -1133,6 +1222,8 @@ function startSession() {
     sessionStats.startTime = Date.now();
 
     streak = 0;
+    endlessRunTotal = 0;
+    endlessRunWrong = 0;
     updateTopStats();
 
     gameOverEl.style.display = "none";
@@ -1209,6 +1300,10 @@ function handleCorrect() {
     sessionStats.bestStreak = Math.max(sessionStats.bestStreak, streak);
     updateSessionChar(currentChar, true, timeTaken);
 
+    if (settings.endless) {
+        endlessRunTotal += 1;
+    }
+
     updateTopStats();
     renderHeatmap();
     saveAll();
@@ -1231,6 +1326,11 @@ function handleWrong() {
     sessionStats.timings.push(timeTaken);
     sessionStats.bestStreak = Math.max(sessionStats.bestStreak, streak);
     updateSessionChar(currentChar, false, timeTaken);
+
+    if (settings.endless) {
+        endlessRunTotal += 1;
+        endlessRunWrong += 1;
+    }
 
     streak = 0;
     updateTopStats();
@@ -1387,6 +1487,7 @@ function endSession() {
     currentChar = "";
 
     showSessionModal();
+    updateTopStats();
 }
 
 endSessionBtn.addEventListener("click", endSession);
@@ -1403,7 +1504,7 @@ sessionModalBackdrop.addEventListener("click", (e) => {
 
 function makeExportPayload() {
     return {
-        version: 1,
+        version: "1.4",
         exportedAt: new Date().toISOString(),
         settings,
         stats,
@@ -1487,10 +1588,13 @@ function applyImportedData(payload) {
     streak = 0;
     sessionStarted = false;
     sessionStats = createEmptySessionStats();
+    endlessRunTotal = 0;
+    endlessRunWrong = 0;
 
     rebuildCharMap();
     ensureDataObjects();
-    buildModeButtons();
+    buildModifierButtons();
+    buildOptionButtons();
     buildRowButtons();
     applyPanelStates();
     updateTopStats();
@@ -1528,6 +1632,8 @@ resetBtn.addEventListener("click", () => {
     streak = 0;
     sessionStarted = false;
     sessionStats = createEmptySessionStats();
+    endlessRunTotal = 0;
+    endlessRunWrong = 0;
 
     localStorage.removeItem("charStats");
     localStorage.removeItem("charTimes");
@@ -1546,10 +1652,12 @@ resetBtn.addEventListener("click", () => {
     showIdleState();
 });
 
-optionsHeaderEl.addEventListener("click", () => {
-    settings.optionsOpen = !settings.optionsOpen;
-    applyPanelStates();
-    saveAll();
+modifiersTabEl.addEventListener("click", () => {
+    setBottomTab("modifiers");
+});
+
+optionsTabEl.addEventListener("click", () => {
+    setBottomTab("options");
 });
 
 statsHeaderEl.addEventListener("click", () => {
@@ -1566,7 +1674,8 @@ function init() {
     }
 
     ensureDataObjects();
-    buildModeButtons();
+    buildModifierButtons();
+    buildOptionButtons();
     buildRowButtons();
     applyPanelStates();
     updateTopStats();
