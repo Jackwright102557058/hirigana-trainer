@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kana Trainer v1.8</title>
+<title>Kana Trainer v2.0</title>
 <style>
     :root {
         --bg-1: #0d0d0d;
@@ -47,7 +47,7 @@
         border: 1px solid var(--border);
         border-radius: 20px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-        padding: 28px 28px 220px;
+        padding: 28px 28px 240px;
         text-align: center;
         position: relative;
     }
@@ -140,7 +140,8 @@
     }
 
     input[type="text"]:disabled,
-    input[type="number"]:disabled {
+    input[type="number"]:disabled,
+    button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
     }
@@ -558,30 +559,15 @@
         width: 100%;
         max-width: 100%;
         margin: 0 auto 12px;
-        padding: 22px 18px 220px;
+        padding: 22px 18px 240px;
     }
 
     body.mobile-mode .hiragana { font-size: 108px; }
     body.mobile-mode .score-pill { padding: 10px 12px; }
-
-    body.mobile-mode input[type="text"] {
-        width: 100%;
-        max-width: 100%;
-        font-size: 22px;
-    }
-
-    body.mobile-mode .toggle-btn {
-        padding: 14px 12px;
-        font-size: 16px;
-    }
-
-    body.mobile-mode .rows-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    body.mobile-mode .button-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    body.mobile-mode input[type="text"] { width: 100%; max-width: 100%; font-size: 22px; }
+    body.mobile-mode .toggle-btn { padding: 14px 12px; font-size: 16px; }
+    body.mobile-mode .rows-grid { grid-template-columns: repeat(3, 1fr); }
+    body.mobile-mode .button-grid { grid-template-columns: repeat(2, 1fr); }
 
     body.mobile-mode .left-panel,
     body.mobile-mode .right-panel {
@@ -602,29 +588,17 @@
     }
 
     @media (max-width: 920px) {
-        body {
-            align-items: flex-start;
-            padding-top: 18px;
-        }
-
+        body { align-items: flex-start; padding-top: 18px; }
         .left-panel { left: 10px; }
         .right-panel { right: 10px; }
         .left-panel, .right-panel { width: 200px; }
-        .main { padding-bottom: 205px; }
+        .main { padding-bottom: 220px; }
     }
 
     @media (max-width: 760px) {
-        body {
-            display: block;
-            padding: 12px;
-        }
-
+        body { display: block; padding: 12px; }
         .app-shell { display: block; }
-
-        .main {
-            width: 100%;
-            margin: 0 auto 12px;
-        }
+        .main { width: 100%; margin: 0 auto 12px; }
 
         .left-panel,
         .right-panel {
@@ -642,11 +616,7 @@
         }
 
         .modal-grid { grid-template-columns: 1fr; }
-
-        .drawer-content {
-            min-height: 320px;
-            max-height: 55vh;
-        }
+        .drawer-content { min-height: 320px; max-height: 55vh; }
     }
 </style>
 </head>
@@ -684,6 +654,16 @@
             </div>
         </div>
 
+        <div class="trial-config" id="comboConfig">
+            <div class="trial-box">
+                <label>Kana Combos</label>
+                <div class="bottom-actions">
+                    <button class="btn" id="comboSameRowBtn" type="button">Same Row</button>
+                    <button class="btn" id="comboRandomBtn" type="button">Random</button>
+                </div>
+            </div>
+        </div>
+
         <div class="start-wrap" id="startWrap">
             <button class="btn btn-start" id="startBtn" type="button">Start</button>
         </div>
@@ -716,14 +696,19 @@
                 <h3>Time Trial Top 3</h3>
                 <div id="timeTrialTop3"></div>
             </div>
+
+            <div class="score-block">
+                <h3>Combo Best</h3>
+                <div class="score-row"><span>Same Row</span><span id="bestComboSameRow">0</span></div>
+                <div class="score-row"><span>Random</span><span id="bestComboRandom">0</span></div>
+            </div>
         </div>
     </div>
 
     <div class="side-panel right-panel">
         <div class="panel-header" id="statsHeader">
             <span>Stats</span>
-            <span id="statsChevron">▼</span>
-        </div>
+            <span id="statsChevron">▼</span></div>
         <div class="panel-content" id="statsContent">
             <div id="heatmap" class="heatmap"></div>
         </div>
@@ -744,12 +729,10 @@
                 <div class="section-title">Modes</div>
                 <div id="modifierOptions" class="button-grid"></div>
             </div>
-
             <div>
                 <div class="section-title">Hiragana Rows</div>
                 <div id="rowOptions" class="rows-grid"></div>
             </div>
-
             <div>
                 <div class="section-title">Katakana Rows</div>
                 <div id="katakanaRowOptions" class="rows-grid"></div>
@@ -762,9 +745,8 @@
             <div>
                 <div class="section-title">Options</div>
                 <div id="optionButtons" class="button-grid"></div>
-                <div class="version-tag">v1.8</div>
+                <div class="version-tag">v2.0</div>
             </div>
-
             <div>
                 <div class="section-title">Save Data</div>
                 <div class="bottom-actions">
@@ -775,7 +757,6 @@
                 <input class="file-input" id="importFile" type="file" accept=".json,application/json" />
                 <div class="muted-note">Export a backup file, copy save JSON to clipboard, or import saved data later.</div>
             </div>
-
             <div class="bottom-actions">
                 <button class="btn btn-danger" id="resetBtn" type="button">Reset All Data</button>
             </div>
@@ -840,18 +821,20 @@ const dakutenRows = {
     h_ka: {"が":"ga","ぎ":"gi","ぐ":"gu","げ":"ge","ご":"go"},
     h_sa: {"ざ":"za","じ":"ji","ず":"zu","ぜ":"ze","ぞ":"zo"},
     h_ta: {"だ":"da","ぢ":"ji","づ":"zu","で":"de","ど":"do"},
-    h_ha: {
-        "ば":"ba","び":"bi","ぶ":"bu","べ":"be","ぼ":"bo",
-        "ぱ":"pa","ぴ":"pi","ぷ":"pu","ぺ":"pe","ぽ":"po"
-    },
+    h_ha: {"ば":"ba","び":"bi","ぶ":"bu","べ":"be","ぼ":"bo","ぱ":"pa","ぴ":"pi","ぷ":"pu","ぺ":"pe","ぽ":"po"},
     k_ka: {"ガ":"ga","ギ":"gi","グ":"gu","ゲ":"ge","ゴ":"go"},
     k_sa: {"ザ":"za","ジ":"ji","ズ":"zu","ゼ":"ze","ゾ":"zo"},
     k_ta: {"ダ":"da","ヂ":"ji","ヅ":"zu","デ":"de","ド":"do"},
-    k_ha: {
-        "バ":"ba","ビ":"bi","ブ":"bu","ベ":"be","ボ":"bo",
-        "パ":"pa","ピ":"pi","プ":"pu","ペ":"pe","ポ":"po"
-    }
+    k_ha: {"バ":"ba","ビ":"bi","ブ":"bu","ベ":"be","ボ":"bo","パ":"pa","ピ":"pi","プ":"pu","ペ":"pe","ポ":"po"}
 };
+
+function defaultScoreHistory() {
+    return {
+        endlessBest: { total: 0, correct: 0, wrong: 0 },
+        timeTrialTop3: [],
+        comboBest: { same_row: 0, random: 0 }
+    };
+}
 
 const DEFAULT_SETTINGS = {
     focusWeak: false,
@@ -862,6 +845,7 @@ const DEFAULT_SETTINGS = {
     endless: false,
     timeTrial: false,
     comboKana: false,
+    comboMode: "random",
     hiraganaRows: Object.keys(hiraganaRows),
     katakanaRows: [],
     statsVisible: true,
@@ -870,17 +854,7 @@ const DEFAULT_SETTINGS = {
 };
 
 function createEmptySessionStats() {
-    return {
-        active: false,
-        startTime: null,
-        endTime: null,
-        answered: 0,
-        correct: 0,
-        wrong: 0,
-        bestStreak: 0,
-        timings: [],
-        perChar: {}
-    };
+    return { active: false, startTime: null, endTime: null, answered: 0, correct: 0, wrong: 0, bestStreak: 0, timings: [], perChar: {} };
 }
 
 function loadJSON(key, fallback) {
@@ -899,26 +873,22 @@ function formatDuration(ms) {
     if (seconds < 60) return `${seconds.toFixed(1)} seconds`;
     const minutes = seconds / 60;
     if (minutes < 60) return `${minutes.toFixed(1)} minutes`;
-    const hours = minutes / 60;
-    return `${hours.toFixed(1)} hours`;
+    return `${(minutes / 60).toFixed(1)} hours`;
 }
 
 function formatCountdown(ms) {
     if (ms <= 0) return "0.0s";
     const seconds = ms / 1000;
     if (seconds < 60) return `${seconds.toFixed(1)}s`;
-    const minutes = seconds / 60;
-    return `${minutes.toFixed(1)}m`;
+    return `${(seconds / 60).toFixed(1)}m`;
 }
 
 let settings = { ...DEFAULT_SETTINGS, ...loadJSON("settings", DEFAULT_SETTINGS) };
 let stats = loadJSON("charStats", {});
 let times = loadJSON("charTimes", {});
 let srs = loadJSON("charSrs", {});
-let scoreHistory = loadJSON("scoreHistory", {
-    endlessBest: { total: 0, correct: 0, wrong: 0 },
-    timeTrialTop3: []
-});
+let scoreHistory = { ...defaultScoreHistory(), ...loadJSON("scoreHistory", defaultScoreHistory()) };
+scoreHistory.comboBest = { ...defaultScoreHistory().comboBest, ...(scoreHistory.comboBest || {}) };
 let highScore = Number(localStorage.getItem("highScore") || "0");
 
 let charMap = {};
@@ -930,10 +900,8 @@ let charStartTime = 0;
 let locked = false;
 let sessionStarted = false;
 let sessionStats = createEmptySessionStats();
-
 let endlessRunTotal = 0;
 let endlessRunWrong = 0;
-
 let trialTimerId = null;
 let trialEndTime = null;
 let trialTarget = 0;
@@ -942,6 +910,9 @@ const hiraganaEl = document.getElementById("hiragana");
 const hintEl = document.getElementById("hint");
 const inputEl = document.getElementById("input");
 const trialConfigEl = document.getElementById("trialConfig");
+const comboConfigEl = document.getElementById("comboConfig");
+const comboSameRowBtn = document.getElementById("comboSameRowBtn");
+const comboRandomBtn = document.getElementById("comboRandomBtn");
 const trialTimeEl = document.getElementById("trialTime");
 const trialTargetEl = document.getElementById("trialTarget");
 const trialTimerPill = document.getElementById("trialTimerPill");
@@ -989,6 +960,8 @@ const closeSessionModalBtn = document.getElementById("closeSessionModalBtn");
 const bestEndlessTotalEl = document.getElementById("bestEndlessTotal");
 const bestEndlessCorrectEl = document.getElementById("bestEndlessCorrect");
 const bestEndlessWrongEl = document.getElementById("bestEndlessWrong");
+const bestComboSameRowEl = document.getElementById("bestComboSameRow");
+const bestComboRandomEl = document.getElementById("bestComboRandom");
 const timeTrialTop3El = document.getElementById("timeTrialTop3");
 
 function saveAll() {
@@ -1018,7 +991,6 @@ function rebuildCharMap() {
 
 function ensureDataObjects() {
     rebuildCharMap();
-
     for (const ch of activeChars) {
         if (!stats[ch]) stats[ch] = { correct: 0, wrong: 0 };
         if (!times[ch]) times[ch] = { avg: 1200, count: 0 };
@@ -1029,9 +1001,11 @@ function ensureDataObjects() {
 function getAverageTime(char) { return times[char]?.avg ?? 1200; }
 function getStats(char) { return stats[char] ?? { correct: 0, wrong: 0 }; }
 function getSrs(char) { return srs[char] ?? { level: 0, due: 0, lastSeen: 0, lastWrong: 0 }; }
+function getCurrentChars() { return currentChar.split(""); }
+function getAnswerForCurrentChar() { return getCurrentChars().map(ch => charMap[ch] || "").join(""); }
+
 function validRomajiSet() {
     const set = new Set(Object.values(charMap));
-
     if (settings.comboKana) {
         const values = Object.values(charMap);
         for (const first of values) {
@@ -1041,8 +1015,17 @@ function validRomajiSet() {
             }
         }
     }
-
     return set;
+}
+
+function getRowKeyForChar(char) {
+    for (const [rowKey, mapping] of Object.entries(hiraganaRows)) {
+        if (char in mapping) return rowKey.replace(/^h_/, "");
+    }
+    for (const [rowKey, mapping] of Object.entries(katakanaRows)) {
+        if (char in mapping) return rowKey.replace(/^k_/, "");
+    }
+    return null;
 }
 
 function updateTopStats() {
@@ -1050,19 +1033,18 @@ function updateTopStats() {
     highScoreEl.textContent = highScore;
     endlessTotalEl.textContent = endlessRunTotal;
     endlessWrongEl.textContent = endlessRunWrong;
-
     const showContinuous = (settings.endless || settings.timeTrial) && sessionStarted;
     endlessTotalPill.style.display = showContinuous ? "inline-block" : "none";
     endlessWrongPill.style.display = showContinuous ? "inline-block" : "none";
-
-    const showTrial = settings.timeTrial && sessionStarted;
-    trialTimerPill.style.display = showTrial ? "inline-block" : "none";
+    trialTimerPill.style.display = settings.timeTrial && sessionStarted ? "inline-block" : "none";
 }
 
 function renderScoreHistory() {
     bestEndlessTotalEl.textContent = scoreHistory.endlessBest.total || 0;
     bestEndlessCorrectEl.textContent = scoreHistory.endlessBest.correct || 0;
     bestEndlessWrongEl.textContent = scoreHistory.endlessBest.wrong || 0;
+    bestComboSameRowEl.textContent = scoreHistory.comboBest.same_row || 0;
+    bestComboRandomEl.textContent = scoreHistory.comboBest.random || 0;
 
     const list = scoreHistory.timeTrialTop3 || [];
     if (!list.length) {
@@ -1080,24 +1062,24 @@ function renderScoreHistory() {
 
 function updateTrialConfigVisibility() {
     trialConfigEl.style.display = settings.timeTrial ? "flex" : "none";
+    comboConfigEl.style.display = settings.comboKana ? "flex" : "none";
+    comboSameRowBtn.classList.toggle("btn-secondary", settings.comboMode === "same_row");
+    comboRandomBtn.classList.toggle("btn-secondary", settings.comboMode === "random");
+    comboSameRowBtn.disabled = sessionStarted;
+    comboRandomBtn.disabled = sessionStarted;
 }
 
 function applyPanelStates() {
     modifiersContentEl.classList.toggle("open", settings.activeBottomTab === "modifiers");
     optionsContentEl.classList.toggle("open", settings.activeBottomTab === "options");
-
     modifiersTabEl.classList.toggle("active", settings.activeBottomTab === "modifiers");
     optionsTabEl.classList.toggle("active", settings.activeBottomTab === "options");
-
     modifiersTabEl.textContent = settings.activeBottomTab === "modifiers" ? "Modifiers ▲" : "Modifiers ▼";
     optionsTabEl.textContent = settings.activeBottomTab === "options" ? "Options ▲" : "Options ▼";
-
     statsContentEl.classList.toggle("hidden", !settings.statsVisible);
     statsChevronEl.textContent = settings.statsVisible ? "▼" : "▲";
-
     scoresContentEl.classList.toggle("hidden", !settings.scoresVisible);
     scoresChevronEl.textContent = settings.scoresVisible ? "▼" : "▲";
-
     document.body.classList.toggle("mobile-mode", !!settings.mobileMode);
 }
 
@@ -1113,10 +1095,7 @@ function makeToggleButton(label, active, onClick, disabled = false) {
     const div = document.createElement("div");
     div.className = "toggle-btn" + (active ? " active" : "") + (disabled ? " disabled" : "");
     div.textContent = label;
-    div.onclick = () => {
-        if (disabled) return;
-        onClick();
-    };
+    div.onclick = () => { if (!disabled) onClick(); };
     return div;
 }
 
@@ -1154,11 +1133,7 @@ function buildModifierButtons() {
 }
 
 function buildOptionButtons() {
-    const modes = [
-        ["srs", "SRS Mode"],
-        ["mobileMode", "Mobile/iPad"]
-    ];
-
+    const modes = [["srs", "SRS Mode"], ["mobileMode", "Mobile/iPad"]];
     const container = document.getElementById("optionButtons");
     container.innerHTML = "";
     const lockedModes = isModeLocked();
@@ -1181,11 +1156,7 @@ function buildRows(containerId, sourceRows, selectedRowsKey, displayPrefix) {
         const label = row.replace(displayPrefix, "");
         const btn = makeToggleButton(label, settings[selectedRowsKey].includes(row), () => {
             const arr = settings[selectedRowsKey];
-            if (arr.includes(row)) {
-                settings[selectedRowsKey] = arr.filter(r => r !== row);
-            } else {
-                settings[selectedRowsKey] = [...arr, row];
-            }
+            settings[selectedRowsKey] = arr.includes(row) ? arr.filter(r => r !== row) : [...arr, row];
             onSettingsChanged();
         }, lockedModes);
         container.appendChild(btn);
@@ -1203,19 +1174,16 @@ function heatmapColor(char) {
 
 function renderHeatmap() {
     heatmapEl.innerHTML = "";
-
     for (const ch of activeChars) {
         const cell = document.createElement("div");
         cell.className = "cell";
         cell.textContent = ch;
         cell.style.background = heatmapColor(ch);
-
         cell.onclick = (e) => {
             e.stopPropagation();
             const st = getStats(ch);
             const tm = getAverageTime(ch);
             const sr = getSrs(ch);
-
             popupEl.innerHTML = `
                 <div class="popup-title">${ch}</div>
                 <div>Right: ${st.correct}</div>
@@ -1223,22 +1191,17 @@ function renderHeatmap() {
                 <div>Avg time: ${formatDuration(tm)}</div>
                 <div>SRS level: ${sr.level}</div>
             `;
-
             popupEl.style.display = "block";
-
             if (settings.mobileMode) {
                 popupEl.style.left = "50%";
                 popupEl.style.top = "50%";
                 popupEl.style.transform = "translate(-50%, -50%)";
             } else {
                 popupEl.style.transform = "none";
-                const x = Math.min(window.innerWidth - 180, e.clientX + 10);
-                const y = Math.min(window.innerHeight - 120, e.clientY + 10);
-                popupEl.style.left = x + "px";
-                popupEl.style.top = y + "px";
+                popupEl.style.left = Math.min(window.innerWidth - 180, e.clientX + 10) + "px";
+                popupEl.style.top = Math.min(window.innerHeight - 120, e.clientY + 10) + "px";
             }
         };
-
         heatmapEl.appendChild(cell);
     }
 }
@@ -1259,50 +1222,38 @@ function onSettingsChanged() {
     updateTopStats();
     renderScoreHistory();
     saveAll();
-
     if (sessionStarted && !locked) nextCharacter();
 }
 
 function getEligiblePool() {
     let pool = [...activeChars];
-    if (pool.length === 0) return [];
-
+    if (!pool.length) return [];
     if (settings.srs) {
         const now = Date.now();
         const duePool = pool.filter(ch => getSrs(ch).due <= now);
-        if (duePool.length > 0) pool = duePool;
+        if (duePool.length) pool = duePool;
     }
-
     return pool;
 }
 
 function weightedPick(pool) {
-    if (pool.length === 0) return null;
+    if (!pool.length) return null;
     if (pool.length === 1) return pool[0];
-
     const now = Date.now();
     const weighted = [];
-
     for (const ch of pool) {
         const st = getStats(ch);
         const sr = getSrs(ch);
         let weight = 1;
-
-        if (settings.focusWeak) {
-            weight += Math.max(0, st.wrong * 2 - st.correct);
-        }
-
+        if (settings.focusWeak) weight += Math.max(0, st.wrong * 2 - st.correct);
         if (settings.srs) {
             const overdueMs = Math.max(0, now - sr.due);
             weight += Math.min(12, Math.floor(overdueMs / 5000));
             weight += Math.max(0, 4 - sr.level);
             if (sr.lastWrong && now - sr.lastWrong < 30000) weight += 5;
         }
-
-        weight = Math.max(1, weight);
-        for (let i = 0; i < weight; i++) weighted.push(ch);
+        for (let i = 0; i < Math.max(1, weight); i++) weighted.push(ch);
     }
-
     return weighted[Math.floor(Math.random() * weighted.length)];
 }
 
@@ -1314,10 +1265,9 @@ function clearHint() {
 function scheduleHint() {
     clearHint();
     if (!settings.hint || !currentChar || !sessionStarted) return;
-
-    const avg = currentChar.split("").reduce((sum, ch) => sum + getAverageTime(ch), 0) / Math.max(1, currentChar.length);
+    const chars = getCurrentChars();
+    const avg = chars.reduce((sum, ch) => sum + getAverageTime(ch), 0) / Math.max(1, chars.length);
     const delay = Math.max(600, Math.round(avg * 1.2));
-
     hintTimeout = setTimeout(() => {
         const answer = getAnswerForCurrentChar();
         if (!answer || locked || !sessionStarted) return;
@@ -1342,20 +1292,22 @@ function showIdleState() {
 
 function nextCharacter() {
     if (!sessionStarted) return;
-
     clearHint();
     closePopup();
     inputEl.value = "";
-
     rebuildCharMap();
     ensureDataObjects();
-
     const pool = getEligiblePool();
     const firstPick = weightedPick(pool) || activeChars[0] || "あ";
     let displayValue = firstPick;
 
     if (settings.comboKana && activeChars.length > 1) {
         let secondPick = weightedPick(pool) || activeChars[1] || firstPick;
+        if (settings.comboMode === "same_row") {
+            const firstRow = getRowKeyForChar(firstPick);
+            const sameRowPool = pool.filter(ch => ch !== firstPick && getRowKeyForChar(ch) === firstRow);
+            if (sameRowPool.length) secondPick = sameRowPool[Math.floor(Math.random() * sameRowPool.length)];
+        }
         let safety = 0;
         while (secondPick === firstPick && safety < 10 && activeChars.length > 1) {
             secondPick = weightedPick(pool) || activeChars[1] || firstPick;
@@ -1369,7 +1321,6 @@ function nextCharacter() {
     hiraganaEl.classList.remove("flash-correct", "flash-wrong");
     charStartTime = Date.now();
     gameOverAnswerEl.textContent = "";
-
     scheduleHint();
     inputEl.disabled = false;
     inputEl.focus();
@@ -1379,7 +1330,6 @@ function startTrialTimer(durationMinutes) {
     stopTrialTimer();
     trialEndTime = Date.now() + durationMinutes * 60 * 1000;
     trialTimerPill.style.display = "inline-block";
-
     const tick = () => {
         const remaining = Math.max(0, trialEndTime - Date.now());
         trialTimerEl.textContent = formatCountdown(remaining);
@@ -1388,7 +1338,6 @@ function startTrialTimer(durationMinutes) {
             endSession(true);
         }
     };
-
     tick();
     trialTimerId = setInterval(tick, 100);
 }
@@ -1406,12 +1355,10 @@ function startSession() {
     sessionStats = createEmptySessionStats();
     sessionStats.active = true;
     sessionStats.startTime = Date.now();
-
     streak = 0;
     endlessRunTotal = 0;
     endlessRunWrong = 0;
     updateTopStats();
-
     gameOverEl.style.display = "none";
     startWrap.style.display = "none";
     sessionActionsEl.style.display = "flex";
@@ -1441,8 +1388,7 @@ function updateSrsCorrect(char) {
     const entry = srs[char] || { level: 0, due: 0, lastSeen: 0, lastWrong: 0 };
     entry.level = Math.min(entry.level + 1, 8);
     const intervals = [3000, 8000, 15000, 30000, 60000, 120000, 300000, 600000, 1200000];
-    const delay = intervals[entry.level] ?? 1200000;
-    entry.due = Date.now() + delay;
+    entry.due = Date.now() + (intervals[entry.level] ?? 1200000);
     entry.lastSeen = Date.now();
     srs[char] = entry;
 }
@@ -1457,9 +1403,7 @@ function updateSrsWrong(char) {
 }
 
 function updateSessionChar(char, correct, timeTaken) {
-    if (!sessionStats.perChar[char]) {
-        sessionStats.perChar[char] = { correct: 0, wrong: 0, times: [] };
-    }
+    if (!sessionStats.perChar[char]) sessionStats.perChar[char] = { correct: 0, wrong: 0, times: [] };
     const entry = sessionStats.perChar[char];
     if (correct) entry.correct += 1;
     else entry.wrong += 1;
@@ -1470,7 +1414,6 @@ function flashResult(correct, onDone) {
     locked = true;
     hiraganaEl.classList.remove("flash-correct", "flash-wrong");
     hiraganaEl.classList.add(correct ? "flash-correct" : "flash-wrong");
-
     setTimeout(() => {
         hiraganaEl.classList.remove("flash-correct", "flash-wrong");
         locked = false;
@@ -1478,63 +1421,58 @@ function flashResult(correct, onDone) {
     }, correct ? 260 : 420);
 }
 
-function currentFlowModeIsContinuous() {
-    return settings.endless || settings.timeTrial;
-}
+function currentFlowModeIsContinuous() { return settings.endless || settings.timeTrial; }
 
-function getAnswerForCurrentChar() {
-    return currentChar.split("").map(ch => charMap[ch] || "").join("");
+function updateCharsResult(isCorrect, timeTaken) {
+    const chars = getCurrentChars();
+    const perCharTime = timeTaken / Math.max(1, chars.length);
+    for (const ch of chars) {
+        if (!stats[ch]) stats[ch] = { correct: 0, wrong: 0 };
+        stats[ch][isCorrect ? "correct" : "wrong"] += 1;
+        updateAverageTime(ch, perCharTime);
+        if (isCorrect) updateSrsCorrect(ch);
+        else updateSrsWrong(ch);
+    }
 }
 
 function handleCorrect() {
     const timeTaken = Date.now() - charStartTime;
-
-    stats[currentChar].correct += 1;
+    updateCharsResult(true, timeTaken);
     streak += 1;
     highScore = Math.max(highScore, streak);
-
-    updateAverageTime(currentChar, timeTaken);
-    updateSrsCorrect(currentChar);
-
     sessionStats.answered += 1;
     sessionStats.correct += 1;
     sessionStats.timings.push(timeTaken);
     sessionStats.bestStreak = Math.max(sessionStats.bestStreak, streak);
     updateSessionChar(currentChar, true, timeTaken);
-
+    if (settings.comboKana) {
+        scoreHistory.comboBest[settings.comboMode] = Math.max(scoreHistory.comboBest[settings.comboMode] || 0, streak);
+    }
     if (currentFlowModeIsContinuous()) endlessRunTotal += 1;
-
     updateTopStats();
     renderHeatmap();
+    renderScoreHistory();
     saveAll();
-
     flashResult(true, () => nextCharacter());
 }
 
 function handleWrong() {
     const timeTaken = Date.now() - charStartTime;
     const correctAnswer = getAnswerForCurrentChar();
-
-    stats[currentChar].wrong += 1;
-    updateAverageTime(currentChar, timeTaken);
-    updateSrsWrong(currentChar);
-
+    updateCharsResult(false, timeTaken);
     sessionStats.answered += 1;
     sessionStats.wrong += 1;
     sessionStats.timings.push(timeTaken);
     sessionStats.bestStreak = Math.max(sessionStats.bestStreak, streak);
     updateSessionChar(currentChar, false, timeTaken);
-
     if (currentFlowModeIsContinuous()) {
         endlessRunTotal += 1;
         endlessRunWrong += 1;
     }
-
     streak = 0;
     updateTopStats();
     renderHeatmap();
     saveAll();
-
     if (currentFlowModeIsContinuous()) {
         hintEl.textContent = `Answer: ${correctAnswer}`;
         flashResult(false, () => nextCharacter());
@@ -1584,6 +1522,20 @@ retryBtn.addEventListener("click", () => {
 
 startBtn.addEventListener("click", startSession);
 
+comboSameRowBtn.addEventListener("click", () => {
+    if (sessionStarted) return;
+    settings.comboMode = "same_row";
+    updateTrialConfigVisibility();
+    saveAll();
+});
+
+comboRandomBtn.addEventListener("click", () => {
+    if (sessionStarted) return;
+    settings.comboMode = "random";
+    updateTrialConfigVisibility();
+    saveAll();
+});
+
 function average(arr) {
     if (!arr.length) return 0;
     return arr.reduce((a, b) => a + b, 0) / arr.length;
@@ -1593,24 +1545,20 @@ function updateBestScores() {
     if (settings.endless) {
         const correct = Math.max(0, endlessRunTotal - endlessRunWrong);
         if (correct > (scoreHistory.endlessBest.correct || 0)) {
-            scoreHistory.endlessBest = {
-                total: endlessRunTotal,
-                correct,
-                wrong: endlessRunWrong
-            };
+            scoreHistory.endlessBest = { total: endlessRunTotal, correct, wrong: endlessRunWrong };
         }
     }
 
     if (settings.timeTrial) {
         const timeVal = Number(trialTimeEl.value) || 0.5;
+        const targetVal = trialTarget || Math.max(1, Number(trialTargetEl.value) || 20);
         const entry = {
             time: timeVal,
-            target: trialTarget || Math.max(1, Number(trialTargetEl.value) || 20),
+            target: targetVal,
             score: sessionStats.correct,
             ratio: sessionStats.correct / Math.max(0.1, timeVal),
-            overTarget: sessionStats.correct - (trialTarget || Math.max(1, Number(trialTargetEl.value) || 20))
+            overTarget: sessionStats.correct - targetVal
         };
-
         scoreHistory.timeTrialTop3.push(entry);
         scoreHistory.timeTrialTop3.sort((a, b) => {
             if (b.overTarget !== a.overTarget) return b.overTarget - a.overTarget;
@@ -1627,31 +1575,12 @@ function updateBestScores() {
 function getSessionDifficultyLists() {
     const entries = Object.entries(sessionStats.perChar).map(([char, data]) => {
         const attempts = data.correct + data.wrong;
-        const accuracy = attempts ? (data.correct / attempts) : 0;
-        return {
-            char,
-            correct: data.correct,
-            wrong: data.wrong,
-            attempts,
-            accuracy,
-            avgTime: average(data.times)
-        };
+        const accuracy = attempts ? data.correct / attempts : 0;
+        return { char, correct: data.correct, wrong: data.wrong, accuracy, avgTime: average(data.times) };
     });
 
-    const hardest = [...entries]
-        .sort((a, b) => {
-            if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
-            return b.wrong - a.wrong;
-        })
-        .slice(0, 5);
-
-    const easiest = [...entries]
-        .sort((a, b) => {
-            if (a.accuracy !== b.accuracy) return b.accuracy - a.accuracy;
-            return a.avgTime - b.avgTime;
-        })
-        .slice(0, 5);
-
+    const hardest = [...entries].sort((a, b) => a.accuracy !== b.accuracy ? a.accuracy - b.accuracy : b.wrong - a.wrong).slice(0, 5);
+    const easiest = [...entries].sort((a, b) => a.accuracy !== b.accuracy ? b.accuracy - a.accuracy : a.avgTime - b.avgTime).slice(0, 5);
     return { hardest, easiest };
 }
 
@@ -1661,21 +1590,17 @@ function renderSessionList(container, title, items) {
         container.innerHTML = "";
         return;
     }
-
     container.style.display = "block";
-    container.innerHTML =
-        `<h3>${title}</h3>` +
-        items.map(item => `
-            <div class="session-list-item">
-                <span>${item.char}</span>
-                <span>${item.correct}✓ / ${item.wrong}✗</span>
-            </div>
-        `).join("");
+    container.innerHTML = `<h3>${title}</h3>` + items.map(item => `
+        <div class="session-list-item">
+            <span>${item.char}</span>
+            <span>${item.correct}✓ / ${item.wrong}✗</span>
+        </div>
+    `).join("");
 }
 
 function showSessionModal(autoEnded = false) {
     sessionStats.endTime = Date.now();
-
     const total = sessionStats.answered;
     const accuracy = total ? ((sessionStats.correct / total) * 100) : 0;
     const avgTime = sessionStats.timings.length ? average(sessionStats.timings) : 0;
@@ -1707,24 +1632,19 @@ function showSessionModal(autoEnded = false) {
         </div>
     `).join("");
 
-    const titleEl = sessionModalBackdrop.querySelector("h2");
-    titleEl.textContent = autoEnded ? "Time Trial Complete" : "Session Stats";
-
+    sessionModalBackdrop.querySelector("h2").textContent = autoEnded ? "Time Trial Complete" : "Session Stats";
     const { hardest, easiest } = getSessionDifficultyLists();
     renderSessionList(sessionHardList, "Hardest This Session", hardest);
     renderSessionList(sessionEasyList, "Strongest This Session", easiest);
-
     sessionModalBackdrop.classList.add("open");
 }
 
 function endSession(autoEnded = false) {
     if (!sessionStarted) return;
-
     sessionStarted = false;
     sessionStats.active = false;
     stopTrialTimer();
     updateBestScores();
-
     inputEl.disabled = true;
     gameOverEl.style.display = "none";
     sessionActionsEl.style.display = "none";
@@ -1732,55 +1652,36 @@ function endSession(autoEnded = false) {
     clearHint();
     hiraganaEl.textContent = "—";
     currentChar = "";
-
     showSessionModal(autoEnded);
     updateTopStats();
     onSettingsChanged();
 }
 
 endSessionBtn.addEventListener("click", () => endSession(false));
-
-closeSessionModalBtn.addEventListener("click", () => {
-    sessionModalBackdrop.classList.remove("open");
-});
-
+closeSessionModalBtn.addEventListener("click", () => sessionModalBackdrop.classList.remove("open"));
 sessionModalBackdrop.addEventListener("click", (e) => {
-    if (e.target === sessionModalBackdrop) {
-        sessionModalBackdrop.classList.remove("open");
-    }
+    if (e.target === sessionModalBackdrop) sessionModalBackdrop.classList.remove("open");
 });
 
 function makeExportPayload() {
-    return {
-        version: "1.8",
-        exportedAt: new Date().toISOString(),
-        settings,
-        stats,
-        times,
-        srs,
-        scoreHistory,
-        highScore
-    };
+    return { version: "2.0", exportedAt: new Date().toISOString(), settings, stats, times, srs, scoreHistory, highScore };
 }
 
 function exportData() {
     const payload = makeExportPayload();
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download = "kana-trainer-save.json";
     document.body.appendChild(a);
     a.click();
     a.remove();
-
     URL.revokeObjectURL(url);
 }
 
 async function copySaveData() {
     const payload = JSON.stringify(makeExportPayload(), null, 2);
-
     try {
         await navigator.clipboard.writeText(payload);
         alert("Save data copied to clipboard.");
@@ -1799,52 +1700,37 @@ function openImportModal() {
     importModalBackdrop.classList.add("open");
 }
 
-function closeImportModal() {
-    importModalBackdrop.classList.remove("open");
-}
+function closeImportModal() { importModalBackdrop.classList.remove("open"); }
 
 importBtn.addEventListener("click", openImportModal);
 closeImportModalBtn.addEventListener("click", closeImportModal);
-
 importModalBackdrop.addEventListener("click", (e) => {
     if (e.target === importModalBackdrop) closeImportModal();
 });
 
-importFileBtn.addEventListener("click", () => {
-    importFile.click();
-});
-
+importFileBtn.addEventListener("click", () => importFile.click());
 importFile.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const text = await file.text();
-    importTextarea.value = text;
+    importTextarea.value = await file.text();
     importFile.value = "";
 });
 
 function applyImportedData(payload) {
-    if (!payload || typeof payload !== "object") {
-        throw new Error("Invalid save data.");
-    }
-
+    if (!payload || typeof payload !== "object") throw new Error("Invalid save data.");
     stats = payload.stats || {};
     times = payload.times || {};
     srs = payload.srs || {};
-    scoreHistory = payload.scoreHistory || {
-        endlessBest: { total: 0, correct: 0, wrong: 0 },
-        timeTrialTop3: []
-    };
+    scoreHistory = { ...defaultScoreHistory(), ...(payload.scoreHistory || {}) };
+    scoreHistory.comboBest = { ...defaultScoreHistory().comboBest, ...(scoreHistory.comboBest || {}) };
     highScore = Number(payload.highScore || 0);
     settings = { ...DEFAULT_SETTINGS, ...(payload.settings || settings) };
-
     streak = 0;
     sessionStarted = false;
     sessionStats = createEmptySessionStats();
     endlessRunTotal = 0;
     endlessRunWrong = 0;
     stopTrialTimer();
-
     rebuildCharMap();
     ensureDataObjects();
     buildModifierButtons();
@@ -1867,9 +1753,7 @@ confirmImportBtn.addEventListener("click", () => {
             alert("Paste save data first, or choose a file.");
             return;
         }
-
-        const payload = JSON.parse(raw);
-        applyImportedData(payload);
+        applyImportedData(JSON.parse(raw));
         closeImportModal();
         alert("Save data imported.");
     } catch {
@@ -1880,14 +1764,10 @@ confirmImportBtn.addEventListener("click", () => {
 resetBtn.addEventListener("click", () => {
     const confirmed = confirm("Reset all stats, timing, SRS progress, session history, and high score tables?");
     if (!confirmed) return;
-
     stats = {};
     times = {};
     srs = {};
-    scoreHistory = {
-        endlessBest: { total: 0, correct: 0, wrong: 0 },
-        timeTrialTop3: []
-    };
+    scoreHistory = defaultScoreHistory();
     highScore = 0;
     streak = 0;
     sessionStarted = false;
@@ -1895,20 +1775,17 @@ resetBtn.addEventListener("click", () => {
     endlessRunTotal = 0;
     endlessRunWrong = 0;
     stopTrialTimer();
-
     localStorage.removeItem("charStats");
     localStorage.removeItem("charTimes");
     localStorage.removeItem("charSrs");
     localStorage.removeItem("scoreHistory");
     localStorage.removeItem("highScore");
-
     rebuildCharMap();
     ensureDataObjects();
     updateTopStats();
     renderHeatmap();
     renderScoreHistory();
     saveAll();
-
     sessionModalBackdrop.classList.remove("open");
     importModalBackdrop.classList.remove("open");
     gameOverEl.style.display = "none";
@@ -1918,25 +1795,36 @@ resetBtn.addEventListener("click", () => {
 
 modifiersTabEl.addEventListener("click", () => setBottomTab("modifiers"));
 optionsTabEl.addEventListener("click", () => setBottomTab("options"));
-
 statsHeaderEl.addEventListener("click", () => {
     settings.statsVisible = !settings.statsVisible;
     applyPanelStates();
     saveAll();
 });
-
 scoresHeaderEl.addEventListener("click", () => {
     settings.scoresVisible = !settings.scoresVisible;
     applyPanelStates();
     saveAll();
 });
 
+comboSameRowBtn.addEventListener("click", () => {
+    if (sessionStarted) return;
+    settings.comboMode = "same_row";
+    updateTrialConfigVisibility();
+    saveAll();
+});
+
+comboRandomBtn.addEventListener("click", () => {
+    if (sessionStarted) return;
+    settings.comboMode = "random";
+    updateTrialConfigVisibility();
+    saveAll();
+});
+
 function init() {
     rebuildCharMap();
-
     if (!Array.isArray(settings.hiraganaRows)) settings.hiraganaRows = Object.keys(hiraganaRows);
     if (!Array.isArray(settings.katakanaRows)) settings.katakanaRows = [];
-
+    if (!["same_row", "random"].includes(settings.comboMode)) settings.comboMode = "random";
     ensureDataObjects();
     buildModifierButtons();
     buildOptionButtons();
@@ -1952,6 +1840,4 @@ function init() {
 }
 
 init();
-</script>
-</body>
-</html>
+</scri
