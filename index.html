@@ -156,6 +156,12 @@
         font-weight: 700;
     }
 
+    .game-over-answer {
+        color: #ddd;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+
     .btn {
         appearance: none;
         border: 1px solid var(--border);
@@ -316,6 +322,7 @@
     .section-title {
         margin: 0 0 10px;
         font-size: 16px;
+        text-align: center;
     }
 
     .button-grid {
@@ -588,7 +595,7 @@
 <div class="app-shell">
     <div class="main">
         <h1>Hiragana Trainer</h1>
-        <div class="subline">Type the matching romaji</div>
+        <div class="subline">Enter the matching romaji</div>
 
         <div class="scoreline">
             <div class="score-pill">Streak: <span id="streak">0</span></div>
@@ -614,6 +621,7 @@
 
         <div id="gameOver" class="game-over">
             <div class="game-over-title">Wrong</div>
+            <div id="gameOverAnswer" class="game-over-answer"></div>
             <button class="btn" id="retryBtn" type="button">Try Again</button>
         </div>
     </div>
@@ -720,6 +728,7 @@ const DEFAULT_SETTINGS = {
     hint: false,
     srs: true,
     mobileMode: false,
+    endless: false,
     rows: Object.keys(rows),
     statsVisible: true,
     optionsOpen: false
@@ -748,6 +757,27 @@ function loadJSON(key, fallback) {
     }
 }
 
+function formatDuration(ms) {
+    if (!Number.isFinite(ms) || ms <= 0) return "0 ms";
+
+    if (ms < 1000) {
+        return `${Math.round(ms)} ms`;
+    }
+
+    const seconds = ms / 1000;
+    if (seconds < 60) {
+        return `${seconds.toFixed(seconds >= 10 ? 1 : 1)} seconds`;
+    }
+
+    const minutes = seconds / 60;
+    if (minutes < 60) {
+        return `${minutes.toFixed(minutes >= 10 ? 1 : 1)} minutes`;
+    }
+
+    const hours = minutes / 60;
+    return `${hours.toFixed(hours >= 10 ? 1 : 1)} hours`;
+}
+
 let settings = { ...DEFAULT_SETTINGS, ...loadJSON("settings", DEFAULT_SETTINGS) };
 let stats = loadJSON("charStats", {});
 let times = loadJSON("charTimes", {});
@@ -768,6 +798,7 @@ const hiraganaEl = document.getElementById("hiragana");
 const hintEl = document.getElementById("hint");
 const inputEl = document.getElementById("input");
 const gameOverEl = document.getElementById("gameOver");
+const gameOverAnswerEl = document.getElementById("gameOverAnswer");
 const streakEl = document.getElementById("streak");
 const highScoreEl = document.getElementById("highScore");
 const heatmapEl = document.getElementById("heatmap");
@@ -868,6 +899,7 @@ function buildModeButtons() {
         ["dakuten", "Dakuten"],
         ["hint", "Hint Mode"],
         ["srs", "SRS Mode"],
+        ["endless", "Endless"],
         ["mobileMode", "Mobile/iPad"]
     ];
 
@@ -930,14 +962,14 @@ function renderHeatmap() {
             e.stopPropagation();
 
             const st = getStats(ch);
-            const tm = Math.round(getAverageTime(ch));
+            const tm = getAverageTime(ch);
             const sr = getSrs(ch);
 
             popupEl.innerHTML = `
                 <div class="popup-title">${ch}</div>
                 <div>Right: ${st.correct}</div>
                 <div>Wrong: ${st.wrong}</div>
-                <div>Avg time: ${tm} ms</div>
+                <div>Avg time: ${formatDuration(tm)}</div>
                 <div>SRS level: ${sr.level}</div>
             `;
 
@@ -1066,6 +1098,8 @@ function showIdleState() {
     inputEl.disabled = true;
     startWrap.style.display = "flex";
     sessionActionsEl.style.display = "none";
+    gameOverEl.style.display = "none";
+    gameOverAnswerEl.textContent = "";
 }
 
 function nextCharacter() {
@@ -1085,6 +1119,7 @@ function nextCharacter() {
     hiraganaEl.textContent = currentChar;
     hiraganaEl.classList.remove("flash-correct", "flash-wrong");
     charStartTime = Date.now();
+    gameOverAnswerEl.textContent = "";
 
     scheduleHint();
     inputEl.disabled = false;
@@ -1146,7 +1181,7 @@ function updateSessionChar(char, correct, timeTaken) {
     entry.times.push(timeTaken);
 }
 
-function flashResult(correct) {
+function flashResult(correct, onDone) {
     locked = true;
     hiraganaEl.classList.remove("flash-correct", "flash-wrong");
     hiraganaEl.classList.add(correct ? "flash-correct" : "flash-wrong");
@@ -1154,14 +1189,8 @@ function flashResult(correct) {
     setTimeout(() => {
         hiraganaEl.classList.remove("flash-correct", "flash-wrong");
         locked = false;
-
-        if (correct) {
-            nextCharacter();
-        } else {
-            gameOverEl.style.display = "block";
-            inputEl.disabled = true;
-        }
-    }, 260);
+        if (onDone) onDone();
+    }, correct ? 260 : 420);
 }
 
 function handleCorrect() {
@@ -1183,11 +1212,15 @@ function handleCorrect() {
     updateTopStats();
     renderHeatmap();
     saveAll();
-    flashResult(true);
+
+    flashResult(true, () => {
+        nextCharacter();
+    });
 }
 
 function handleWrong() {
     const timeTaken = Date.now() - charStartTime;
+    const correctAnswer = charMap[currentChar];
 
     stats[currentChar].wrong += 1;
     updateAverageTime(currentChar, timeTaken);
@@ -1199,10 +1232,23 @@ function handleWrong() {
     sessionStats.bestStreak = Math.max(sessionStats.bestStreak, streak);
     updateSessionChar(currentChar, false, timeTaken);
 
+    streak = 0;
     updateTopStats();
     renderHeatmap();
     saveAll();
-    flashResult(false);
+
+    if (settings.endless) {
+        hintEl.textContent = `Answer: ${correctAnswer}`;
+        flashResult(false, () => {
+            nextCharacter();
+        });
+    } else {
+        gameOverAnswerEl.textContent = `Correct answer: ${correctAnswer}`;
+        flashResult(false, () => {
+            gameOverEl.style.display = "block";
+            inputEl.disabled = true;
+        });
+    }
 }
 
 inputEl.addEventListener("input", () => {
@@ -1225,6 +1271,7 @@ retryBtn.addEventListener("click", () => {
     streak = 0;
     updateTopStats();
     gameOverEl.style.display = "none";
+    gameOverAnswerEl.textContent = "";
     startWrap.style.display = "none";
     sessionActionsEl.style.display = "flex";
     inputEl.disabled = false;
@@ -1237,10 +1284,6 @@ startBtn.addEventListener("click", startSession);
 function average(arr) {
     if (!arr.length) return 0;
     return arr.reduce((a, b) => a + b, 0) / arr.length;
-}
-
-function formatMs(ms) {
-    return Math.round(ms) + " ms";
 }
 
 function getSessionDifficultyLists() {
@@ -1302,7 +1345,6 @@ function showSessionModal() {
     const fastest = sessionStats.timings.length ? Math.min(...sessionStats.timings) : 0;
     const slowest = sessionStats.timings.length ? Math.max(...sessionStats.timings) : 0;
     const durationMs = sessionStats.startTime ? (sessionStats.endTime - sessionStats.startTime) : 0;
-    const durationSec = Math.round(durationMs / 1000);
 
     const cards = [
         ["Answered", total],
@@ -1310,10 +1352,10 @@ function showSessionModal() {
         ["Wrong", sessionStats.wrong],
         ["Accuracy", `${accuracy.toFixed(1)}%`],
         ["Best Streak", sessionStats.bestStreak],
-        ["Avg Time", formatMs(avgTime)],
-        ["Fastest", formatMs(fastest)],
-        ["Slowest", formatMs(slowest)],
-        ["Session Time", `${durationSec}s`]
+        ["Avg Time", formatDuration(avgTime)],
+        ["Fastest", formatDuration(fastest)],
+        ["Slowest", formatDuration(slowest)],
+        ["Session Time", formatDuration(durationMs)]
     ];
 
     sessionStatsGrid.innerHTML = cards.map(([label, value]) => `
