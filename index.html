@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kana Trainer v1.9</title>
+<title>Kana Trainer v1.8</title>
 <style>
     :root {
         --bg-1: #0d0d0d;
@@ -47,7 +47,7 @@
         border: 1px solid var(--border);
         border-radius: 20px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-        padding: 28px 28px 240px;
+        padding: 28px 28px 220px;
         text-align: center;
         position: relative;
     }
@@ -558,7 +558,7 @@
         width: 100%;
         max-width: 100%;
         margin: 0 auto 12px;
-        padding: 22px 18px 240px;
+        padding: 22px 18px 220px;
     }
 
     body.mobile-mode .hiragana { font-size: 108px; }
@@ -610,7 +610,7 @@
         .left-panel { left: 10px; }
         .right-panel { right: 10px; }
         .left-panel, .right-panel { width: 200px; }
-        .main { padding-bottom: 220px; }
+        .main { padding-bottom: 205px; }
     }
 
     @media (max-width: 760px) {
@@ -681,16 +681,6 @@
             <div class="trial-box">
                 <label for="trialTarget">Target</label>
                 <input id="trialTarget" type="number" min="1" step="1" value="20" />
-            </div>
-        </div>
-
-        <div class="trial-config" id="comboConfig">
-            <div class="trial-box">
-                <label>Kana Combos</label>
-                <div class="bottom-actions">
-                    <button class="btn" id="comboSameRowBtn" type="button">Same Row</button>
-                    <button class="btn" id="comboRandomBtn" type="button">Random</button>
-                </div>
             </div>
         </div>
 
@@ -772,7 +762,7 @@
             <div>
                 <div class="section-title">Options</div>
                 <div id="optionButtons" class="button-grid"></div>
-                <div class="version-tag">v1.9</div>
+                <div class="version-tag">v1.8</div>
             </div>
 
             <div>
@@ -872,7 +862,6 @@ const DEFAULT_SETTINGS = {
     endless: false,
     timeTrial: false,
     comboKana: false,
-    comboMode: "random",
     hiraganaRows: Object.keys(hiraganaRows),
     katakanaRows: [],
     statsVisible: true,
@@ -953,9 +942,6 @@ const hiraganaEl = document.getElementById("hiragana");
 const hintEl = document.getElementById("hint");
 const inputEl = document.getElementById("input");
 const trialConfigEl = document.getElementById("trialConfig");
-const comboConfigEl = document.getElementById("comboConfig");
-const comboSameRowBtn = document.getElementById("comboSameRowBtn");
-const comboRandomBtn = document.getElementById("comboRandomBtn");
 const trialTimeEl = document.getElementById("trialTime");
 const trialTargetEl = document.getElementById("trialTarget");
 const trialTimerPill = document.getElementById("trialTimerPill");
@@ -1043,7 +1029,6 @@ function ensureDataObjects() {
 function getAverageTime(char) { return times[char]?.avg ?? 1200; }
 function getStats(char) { return stats[char] ?? { correct: 0, wrong: 0 }; }
 function getSrs(char) { return srs[char] ?? { level: 0, due: 0, lastSeen: 0, lastWrong: 0 }; }
-
 function validRomajiSet() {
     const set = new Set(Object.values(charMap));
 
@@ -1095,11 +1080,6 @@ function renderScoreHistory() {
 
 function updateTrialConfigVisibility() {
     trialConfigEl.style.display = settings.timeTrial ? "flex" : "none";
-    comboConfigEl.style.display = settings.comboKana ? "flex" : "none";
-    comboSameRowBtn.classList.toggle("btn-secondary", settings.comboMode === "same_row");
-    comboRandomBtn.classList.toggle("btn-secondary", settings.comboMode === "random");
-    comboSameRowBtn.disabled = sessionStarted;
-    comboRandomBtn.disabled = sessionStarted;
 }
 
 function applyPanelStates() {
@@ -1331,16 +1311,6 @@ function clearHint() {
     hintEl.textContent = "";
 }
 
-function getRowKeyForChar(char) {
-    for (const [rowKey, mapping] of Object.entries(hiraganaRows)) {
-        if (char in mapping) return rowKey.replace(/^h_/, "");
-    }
-    for (const [rowKey, mapping] of Object.entries(katakanaRows)) {
-        if (char in mapping) return rowKey.replace(/^k_/, "");
-    }
-    return null;
-}
-
 function scheduleHint() {
     clearHint();
     if (!settings.hint || !currentChar || !sessionStarted) return;
@@ -1386,27 +1356,11 @@ function nextCharacter() {
 
     if (settings.comboKana && activeChars.length > 1) {
         let secondPick = weightedPick(pool) || activeChars[1] || firstPick;
-
-        if (settings.comboMode === "same_row") {
-            const firstRow = getRowKeyForChar(firstPick);
-            const sameRowPool = pool.filter(ch => ch !== firstPick && getRowKeyForChar(ch) === firstRow);
-            if (sameRowPool.length > 0) {
-                secondPick = sameRowPool[Math.floor(Math.random() * sameRowPool.length)];
-            } else {
-                let safety = 0;
-                while (secondPick === firstPick && safety < 10 && activeChars.length > 1) {
-                    secondPick = weightedPick(pool) || activeChars[1] || firstPick;
-                    safety += 1;
-                }
-            }
-        } else {
-            let safety = 0;
-            while (secondPick === firstPick && safety < 10 && activeChars.length > 1) {
-                secondPick = weightedPick(pool) || activeChars[1] || firstPick;
-                safety += 1;
-            }
+        let safety = 0;
+        while (secondPick === firstPick && safety < 10 && activeChars.length > 1) {
+            secondPick = weightedPick(pool) || activeChars[1] || firstPick;
+            safety += 1;
         }
-
         displayValue = `${firstPick}${secondPick}`;
     }
 
@@ -1535,15 +1489,12 @@ function getAnswerForCurrentChar() {
 function handleCorrect() {
     const timeTaken = Date.now() - charStartTime;
 
-    for (const ch of currentChar.split("")) {
-        if (!stats[ch]) stats[ch] = { correct: 0, wrong: 0 };
-        stats[ch].correct += 1;
-        updateAverageTime(ch, timeTaken / Math.max(1, currentChar.length));
-        updateSrsCorrect(ch);
-    }
-
+    stats[currentChar].correct += 1;
     streak += 1;
     highScore = Math.max(highScore, streak);
+
+    updateAverageTime(currentChar, timeTaken);
+    updateSrsCorrect(currentChar);
 
     sessionStats.answered += 1;
     sessionStats.correct += 1;
@@ -1564,12 +1515,9 @@ function handleWrong() {
     const timeTaken = Date.now() - charStartTime;
     const correctAnswer = getAnswerForCurrentChar();
 
-    for (const ch of currentChar.split("")) {
-        if (!stats[ch]) stats[ch] = { correct: 0, wrong: 0 };
-        stats[ch].wrong += 1;
-        updateAverageTime(ch, timeTaken / Math.max(1, currentChar.length));
-        updateSrsWrong(ch);
-    }
+    stats[currentChar].wrong += 1;
+    updateAverageTime(currentChar, timeTaken);
+    updateSrsWrong(currentChar);
 
     sessionStats.answered += 1;
     sessionStats.wrong += 1;
@@ -1611,6 +1559,13 @@ inputEl.addEventListener("input", () => {
     const expected = getAnswerForCurrentChar();
     const compactValue = value.replace(/\s+/g, "");
 
+    if (settings.comboKana) {
+        if (compactValue.length < expected.length) return;
+        if (compactValue === expected) handleCorrect();
+        else handleWrong();
+        return;
+    }
+
     if (compactValue === expected) handleCorrect();
     else handleWrong();
 });
@@ -1628,20 +1583,6 @@ retryBtn.addEventListener("click", () => {
 });
 
 startBtn.addEventListener("click", startSession);
-
-comboSameRowBtn.addEventListener("click", () => {
-    if (sessionStarted) return;
-    settings.comboMode = "same_row";
-    updateTrialConfigVisibility();
-    saveAll();
-});
-
-comboRandomBtn.addEventListener("click", () => {
-    if (sessionStarted) return;
-    settings.comboMode = "random";
-    updateTrialConfigVisibility();
-    saveAll();
-});
 
 function average(arr) {
     if (!arr.length) return 0;
@@ -1811,7 +1752,7 @@ sessionModalBackdrop.addEventListener("click", (e) => {
 
 function makeExportPayload() {
     return {
-        version: "1.9",
+        version: "1.8",
         exportedAt: new Date().toISOString(),
         settings,
         stats,
@@ -1995,7 +1936,6 @@ function init() {
 
     if (!Array.isArray(settings.hiraganaRows)) settings.hiraganaRows = Object.keys(hiraganaRows);
     if (!Array.isArray(settings.katakanaRows)) settings.katakanaRows = [];
-    if (!["same_row", "random"].includes(settings.comboMode)) settings.comboMode = "random";
 
     ensureDataObjects();
     buildModifierButtons();
