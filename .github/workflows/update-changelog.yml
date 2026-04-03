@@ -3,6 +3,7 @@ name: Update changelog on release
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -52,14 +53,14 @@ jobs:
 
           if os.path.exists(path):
               with open(path, "r", encoding="utf-8") as f:
-                  existing = f.read().strip()
+                  existing = f.read().rstrip()
           else:
-              existing = "# Changelog\n\n"
+              existing = "# Changelog\n\nAll notable changes to this project will be documented here.\n"
 
           if not existing.startswith("# Changelog"):
               existing = "# Changelog\n\n" + existing
 
-          updated = "# Changelog\n\n" + new_entry + existing[len("# Changelog"):].lstrip()
+          updated = existing + "\n\n---\n\n" + new_entry
 
           with open(path, "w", encoding="utf-8") as f:
               f.write(updated.rstrip() + "\n")
@@ -70,5 +71,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md
-          git diff --cached --quiet || git commit -m "Update changelog for ${{ github.event.release.tag_name }}"
+          git diff --cached --quiet || git commit -m "Update changelog for release ${{ github.event.release.tag_name }}"
           git push
