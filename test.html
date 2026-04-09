@@ -1425,9 +1425,12 @@ const ALL_BASE_KANA = [
 
 const ALL_DAKUTEN_KANA = Object.entries(DAKUTEN_ROWS).flatMap(([, row]) => Object.entries(row));
 
-const TEST_RESULTS_STORAGE_KEY = "testModeResults";
-const TEST_RESULTS_STORAGE_BACKUP_KEY = "kanaTrainerTestModeResults";
-const TEST_RESULTS_UPDATED_AT_KEY = "testModeResultsUpdatedAt";
+const READING_TEST_RESULTS_STORAGE_KEY = "testModeResults";
+const READING_TEST_RESULTS_STORAGE_BACKUP_KEY = "kanaTrainerTestModeResults";
+const READING_TEST_RESULTS_UPDATED_AT_KEY = "testModeResultsUpdatedAt";
+const WRITING_TEST_RESULTS_STORAGE_KEY = "writingTestModeResults";
+const WRITING_TEST_RESULTS_STORAGE_BACKUP_KEY = "kanaTrainerWritingTestModeResults";
+const WRITING_TEST_RESULTS_UPDATED_AT_KEY = "writingTestModeResultsUpdatedAt";
 
 
 function loadJSON(key, fallback) {
@@ -1550,16 +1553,16 @@ function buildAverageResult(mode, tests) {
     };
 }
 
-function loadStoredResults() {
-    const primary = loadJSON(TEST_RESULTS_STORAGE_KEY, null);
-    const backup = loadJSON(TEST_RESULTS_STORAGE_BACKUP_KEY, null);
+function loadModeResults(primaryKey, backupKey, expectedMode) {
+    const primary = loadJSON(primaryKey, null);
+    const backup = loadJSON(backupKey, null);
 
     const mergedMap = new Map();
     const pushItems = (arr) => {
         if (!Array.isArray(arr)) return;
         arr.forEach(item => {
             const normalized = normalizeTestResult(item);
-            if (!normalized) return;
+            if (!normalized || normalized.mode !== expectedMode) return;
             const key = normalized.id || `${normalized.mode}-${normalized.date}-${normalized.startedAt}`;
             mergedMap.set(key, normalized);
         });
@@ -1567,16 +1570,30 @@ function loadStoredResults() {
 
     pushItems(primary);
     pushItems(backup);
+    return Array.from(mergedMap.values());
+}
 
-    const tests = Array.from(mergedMap.values()).sort((a, b) => {
+function loadStoredResults() {
+    const readingTests = loadModeResults(
+        READING_TEST_RESULTS_STORAGE_KEY,
+        READING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        "reading"
+    );
+    const writingTests = loadModeResults(
+        WRITING_TEST_RESULTS_STORAGE_KEY,
+        WRITING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        "writing"
+    );
+
+    const tests = [...readingTests, ...writingTests].sort((a, b) => {
         const aTime = Date.parse(`${a.date || "1970-01-01"}T${a.startedAt || "00:00"}`) || 0;
         const bTime = Date.parse(`${b.date || "1970-01-01"}T${b.startedAt || "00:00"}`) || 0;
         return bTime - aTime;
     });
 
     const averages = [
-        buildAverageResult("reading", tests),
-        buildAverageResult("writing", tests)
+        buildAverageResult("reading", readingTests),
+        buildAverageResult("writing", writingTests)
     ].filter(Boolean);
 
     return [...averages, ...tests];
@@ -1974,7 +1991,21 @@ document.addEventListener("visibilitychange", () => {
     if (!document.hidden) renderAll();
 });
 window.addEventListener("storage", (event) => {
-    if (!event.key || event.key === TEST_RESULTS_STORAGE_KEY || event.key === TEST_RESULTS_STORAGE_BACKUP_KEY || event.key === TEST_RESULTS_UPDATED_AT_KEY || event.key === "testModeResults" || event.key === "kanaTrainerTestModeResults" || event.key === "testModeResultsUpdatedAt") {
+    const watchedKeys = new Set([
+        READING_TEST_RESULTS_STORAGE_KEY,
+        READING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        READING_TEST_RESULTS_UPDATED_AT_KEY,
+        WRITING_TEST_RESULTS_STORAGE_KEY,
+        WRITING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        WRITING_TEST_RESULTS_UPDATED_AT_KEY,
+        "testModeResults",
+        "kanaTrainerTestModeResults",
+        "testModeResultsUpdatedAt",
+        "writingTestModeResults",
+        "kanaTrainerWritingTestModeResults",
+        "writingTestModeResultsUpdatedAt"
+    ]);
+    if (!event.key || watchedKeys.has(event.key)) {
         renderAll();
     }
 });

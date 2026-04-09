@@ -2297,16 +2297,22 @@ const TEST_RESULTS_STORAGE_KEY = "testModeResults";
 const TEST_RESULTS_STORAGE_BACKUP_KEY = "kanaTrainerTestModeResults";
 const TEST_RESULTS_UPDATED_AT_KEY = "testModeResultsUpdatedAt";
 
+function normalizeStoredTestModeResults(list) {
+    return Array.isArray(list)
+        ? list.filter(item => item && typeof item === "object" && (item.mode || "reading") === "reading")
+        : [];
+}
+
 function loadStoredTestModeResults() {
     const primary = loadJSON(TEST_RESULTS_STORAGE_KEY, null);
     const backup = loadJSON(TEST_RESULTS_STORAGE_BACKUP_KEY, null);
-    if (Array.isArray(primary)) return primary;
-    if (Array.isArray(backup)) return backup;
+    if (Array.isArray(primary)) return normalizeStoredTestModeResults(primary);
+    if (Array.isArray(backup)) return normalizeStoredTestModeResults(backup);
     return [];
 }
 
 function persistStoredTestModeResults(list) {
-    const safeList = Array.isArray(list) ? list : [];
+    const safeList = normalizeStoredTestModeResults(list);
     const payload = JSON.stringify(safeList);
     localStorage.setItem(TEST_RESULTS_STORAGE_KEY, payload);
     localStorage.setItem(TEST_RESULTS_STORAGE_BACKUP_KEY, payload);
@@ -2620,7 +2626,9 @@ function makeExportPayload() {
         dailyChallengeHistory,
         highScore,
         testModeResults: loadStoredTestModeResults(),
-        testModeResultsUpdatedAt: localStorage.getItem(TEST_RESULTS_UPDATED_AT_KEY) || ""
+        readingTestModeResults: loadStoredTestModeResults(),
+        testModeResultsUpdatedAt: localStorage.getItem(TEST_RESULTS_UPDATED_AT_KEY) || "",
+        readingTestModeResultsUpdatedAt: localStorage.getItem(TEST_RESULTS_UPDATED_AT_KEY) || ""
     };
 }
 
@@ -2697,9 +2705,14 @@ function applyImportedData(payload) {
     highScore = Number(payload.highScore || 0);
     settings = { ...DEFAULT_SETTINGS, ...(payload.settings || settings) };
 
-    const importedTestModeResults = Array.isArray(payload.testModeResults) ? payload.testModeResults : [];
-    localStorage.setItem("testModeResults", JSON.stringify(importedTestModeResults));
-    localStorage.setItem("testModeResultsUpdatedAt", String(Date.now()));
+    const importedTestModeResults = Array.isArray(payload.readingTestModeResults)
+        ? payload.readingTestModeResults
+        : (Array.isArray(payload.testModeResults)
+            ? payload.testModeResults.filter(item => (item?.mode || "reading") === "reading")
+            : []);
+    localStorage.setItem(TEST_RESULTS_STORAGE_KEY, JSON.stringify(normalizeStoredTestModeResults(importedTestModeResults)));
+    localStorage.setItem(TEST_RESULTS_STORAGE_BACKUP_KEY, JSON.stringify(normalizeStoredTestModeResults(importedTestModeResults)));
+    localStorage.setItem(TEST_RESULTS_UPDATED_AT_KEY, String(Date.now()));
 
     streak = 0;
     sessionStarted = false;
