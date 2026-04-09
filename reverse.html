@@ -2611,6 +2611,27 @@ function startSession() {
 }
 
 
+
+const TEST_RESULTS_STORAGE_KEY = "testModeResults";
+const TEST_RESULTS_STORAGE_BACKUP_KEY = "kanaTrainerTestModeResults";
+const TEST_RESULTS_UPDATED_AT_KEY = "testModeResultsUpdatedAt";
+
+function loadStoredTestModeResults() {
+    const primary = loadJSON(TEST_RESULTS_STORAGE_KEY, null);
+    const backup = loadJSON(TEST_RESULTS_STORAGE_BACKUP_KEY, null);
+    if (Array.isArray(primary)) return primary;
+    if (Array.isArray(backup)) return backup;
+    return [];
+}
+
+function persistStoredTestModeResults(list) {
+    const safeList = Array.isArray(list) ? list : [];
+    const payload = JSON.stringify(safeList);
+    localStorage.setItem(TEST_RESULTS_STORAGE_KEY, payload);
+    localStorage.setItem(TEST_RESULTS_STORAGE_BACKUP_KEY, payload);
+    localStorage.setItem(TEST_RESULTS_UPDATED_AT_KEY, String(Date.now()));
+}
+
 function buildTestModeBreakdown() {
     const result = {
         hiragana: { correct: 0, wrong: 0 },
@@ -2672,11 +2693,9 @@ function saveTestModeResult() {
         kana
     };
 
-    const existing = loadJSON("testModeResults", []);
-    const list = Array.isArray(existing) ? existing : [];
+    const list = loadStoredTestModeResults();
     list.unshift(result);
-    localStorage.setItem("testModeResults", JSON.stringify(list));
-    localStorage.setItem("testModeResultsUpdatedAt", String(Date.now()));
+    persistStoredTestModeResults(list);
 }
 
 function endTestMode() {
@@ -2988,8 +3007,8 @@ function makeExportPayload() {
         scoreHistory,
         dailyChallengeHistory,
         highScore,
-        testModeResults: loadJSON("testModeResults", []),
-        testModeResultsUpdatedAt: localStorage.getItem("testModeResultsUpdatedAt") || ""
+        testModeResults: loadStoredTestModeResults(),
+        testModeResultsUpdatedAt: localStorage.getItem(TEST_RESULTS_UPDATED_AT_KEY) || ""
     };
 }
 
