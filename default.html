@@ -781,6 +781,24 @@
             max-height: 55vh;
         }
     }
+
+    .test-badge {
+        display: none;
+    }
+
+    body.test-mode-active #testBadge {
+        display: inline-block !important;
+    }
+
+    body.test-mode-active .main {
+        border-color: #2f8f68;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(103, 215, 139, 0.14);
+    }
+
+    body.test-mode-active {
+        background: radial-gradient(circle at top, #133127 0%, var(--bg-1) 58%);
+    }
+
 </style>
 </head>
 <body>
@@ -789,6 +807,7 @@
         <h1>Reading Practice</h1>
         <div class="subline">Enter the matching romaji</div>
         <div id="dailyBadge" class="daily-badge">Reading Daily Challenge · First try sets today's official score</div>
+        <div id="testBadge" class="daily-badge" style="display:none; background:#123127; border-color:#2f8f68; color:#bff3de;">Reading Test Mode · Full kana test run</div>
 
         <div class="scoreline">
             <div class="score-pill">Streak: <span id="streak">0</span></div>
@@ -800,6 +819,9 @@
             <div class="score-pill" id="dailyCorrectPill" style="display:none;">Correct: <span id="dailyCorrect">0</span></div>
             <div class="score-pill" id="dailyWrongPill" style="display:none;">Wrong: <span id="dailyWrong">0</span></div>
             <div class="score-pill" id="dailyOfficialPill" style="display:none;">Official: <span id="dailyOfficial">—</span></div>
+            <div class="score-pill" id="testQuestionPill" style="display:none;">Question: <span id="testQuestion">0</span>/<span id="testTotal">0</span></div>
+            <div class="score-pill" id="testCorrectPill" style="display:none;">Correct: <span id="testCorrect">0</span></div>
+            <div class="score-pill" id="testWrongPill" style="display:none;">Wrong: <span id="testWrong">0</span></div>
         </div>
 
         <div class="hiragana-wrap">
@@ -1029,6 +1051,11 @@ const DAILY_CHALLENGE_CHAR_MAP = {
     ...Object.assign({}, ...Object.values(dakutenRows))
 };
 
+const TEST_MODE_BASE_CHAR_MAP = {
+    ...Object.assign({}, ...Object.values(hiraganaRows)),
+    ...Object.assign({}, ...Object.values(katakanaRows))
+};
+
 const DEFAULT_SETTINGS = {
     focusWeak: false,
     dakuten: false,
@@ -1038,6 +1065,7 @@ const DEFAULT_SETTINGS = {
     endless: false,
     timeTrial: false,
     dailyChallenge: false,
+    testMode: false,
     comboKana: false,
     comboMode: "random",
     hiraganaRows: Object.keys(hiraganaRows),
@@ -1140,10 +1168,16 @@ let dailyIndex = 0;
 let dailyCorrect = 0;
 let dailyWrong = 0;
 let dailyStartTime = 0;
+let testSequence = [];
+let testIndex = 0;
+let testCorrect = 0;
+let testWrong = 0;
+let testStartTime = 0;
 
 const titleEl = document.querySelector("h1");
 const sublineEl = document.querySelector(".subline");
 const dailyBadgeEl = document.getElementById("dailyBadge");
+const testBadgeEl = document.getElementById("testBadge");
 const hiraganaEl = document.getElementById("hiragana");
 const hintEl = document.getElementById("hint");
 const comboTierNoticeEl = document.getElementById("comboTierNotice");
@@ -1164,6 +1198,13 @@ const dailyProgressEl = document.getElementById("dailyProgress");
 const dailyCorrectEl = document.getElementById("dailyCorrect");
 const dailyWrongEl = document.getElementById("dailyWrong");
 const dailyOfficialEl = document.getElementById("dailyOfficial");
+const testQuestionPill = document.getElementById("testQuestionPill");
+const testCorrectPill = document.getElementById("testCorrectPill");
+const testWrongPill = document.getElementById("testWrongPill");
+const testQuestionEl = document.getElementById("testQuestion");
+const testTotalEl = document.getElementById("testTotal");
+const testCorrectEl = document.getElementById("testCorrect");
+const testWrongEl = document.getElementById("testWrong");
 const gameOverEl = document.getElementById("gameOver");
 const gameOverTitleEl = gameOverEl.querySelector(".game-over-title");
 const gameOverAnswerEl = document.getElementById("gameOverAnswer");
@@ -1175,8 +1216,6 @@ const endlessTotalPill = document.getElementById("endlessTotalPill");
 const endlessWrongPill = document.getElementById("endlessWrongPill");
 const heatmapEl = document.getElementById("heatmap");
 const popupEl = document.getElementById("popup");
-let popupLocked = false;
-let hoveredCell = null;
 const modifiersTabEl = document.getElementById("modifiersTab");
 const optionsTabEl = document.getElementById("optionsTab");
 const modifiersContentEl = document.getElementById("modifiersContent");
@@ -1189,10 +1228,6 @@ const scoresContentEl = document.getElementById("scoresContent");
 const scoresChevronEl = document.getElementById("scoresChevron");
 const retryBtn = document.getElementById("retryBtn");
 const resetBtn = document.getElementById("resetBtn");
-
-function setRetryButtonVisible(visible) {
-    retryBtn.style.display = visible ? "inline-block" : "none";
-}
 const startBtn = document.getElementById("startBtn");
 const startWrap = document.getElementById("startWrap");
 const sessionActionsEl = document.getElementById("sessionActions");
@@ -1310,36 +1345,81 @@ function isDailyChallengeSession() {
     return !!settings.dailyChallenge;
 }
 
+function isTestModeSession() {
+    return !!settings.testMode;
+}
+
+function getTestModePoolMap() {
+    return settings.dakuten
+        ? { ...TEST_MODE_BASE_CHAR_MAP, ...Object.assign({}, ...Object.values(dakutenRows)) }
+        : { ...TEST_MODE_BASE_CHAR_MAP };
+}
+
+function buildTestSequence() {
+    const pool = Object.keys(getTestModePoolMap());
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool;
+}
+
 function getAnswerMapForCurrentMode() {
-    return isDailyChallengeSession() ? DAILY_CHALLENGE_CHAR_MAP : charMap;
+    if (isDailyChallengeSession()) return DAILY_CHALLENGE_CHAR_MAP;
+    if (isTestModeSession()) return getTestModePoolMap();
+    return charMap;
 }
 
 
 function applyDailyChallengeTheme() {
-    const active = isDailyChallengeSession();
-    document.body.classList.toggle("daily-challenge-active", active);
-    if (dailyBadgeEl) dailyBadgeEl.style.display = active ? "inline-block" : "none";
-    titleEl.textContent = active ? "Reading Daily Challenge" : "Reading Practice";
-    sublineEl.textContent = active
-        ? "20 questions · All hiragana, katakana, and dakuten"
-        : "Enter the matching romaji";
+    const dailyActive = isDailyChallengeSession();
+    const testActive = isTestModeSession();
+
+    document.body.classList.toggle("daily-challenge-active", dailyActive);
+    document.body.classList.toggle("test-mode-active", testActive);
+
+    if (dailyBadgeEl) dailyBadgeEl.style.display = dailyActive ? "inline-block" : "none";
+    if (testBadgeEl) testBadgeEl.style.display = testActive ? "inline-block" : "none";
+
+    if (dailyActive) {
+        titleEl.textContent = "Reading Daily Challenge";
+        sublineEl.textContent = "20 questions · All hiragana, katakana, and dakuten";
+    } else if (testActive) {
+        titleEl.textContent = "Reading Test Mode";
+        sublineEl.textContent = "One full shuffled pass through all enabled test kana";
+    } else {
+        titleEl.textContent = "Reading Practice";
+        sublineEl.textContent = "Enter the matching romaji";
+    }
 }
 
 function updateDailyChallengePills() {
-    const active = isDailyChallengeSession() && sessionStarted;
-    dailyProgressPill.style.display = active ? "inline-block" : "none";
-    dailyCorrectPill.style.display = active ? "inline-block" : "none";
-    dailyWrongPill.style.display = active ? "inline-block" : "none";
+    const dailyActive = isDailyChallengeSession() && sessionStarted;
+    dailyProgressPill.style.display = dailyActive ? "inline-block" : "none";
+    dailyCorrectPill.style.display = dailyActive ? "inline-block" : "none";
+    dailyWrongPill.style.display = dailyActive ? "inline-block" : "none";
 
-    if (active) {
+    if (dailyActive) {
         dailyProgressEl.textContent = Math.min(dailyIndex + 1, 20);
         dailyCorrectEl.textContent = dailyCorrect;
         dailyWrongEl.textContent = dailyWrong;
     }
 
     const todayRecord = getTodayDailyRecord();
-    dailyOfficialPill.style.display = active ? "inline-block" : "none";
+    dailyOfficialPill.style.display = dailyActive ? "inline-block" : "none";
     dailyOfficialEl.textContent = todayRecord ? `${todayRecord.officialScore}/${todayRecord.total}` : "—";
+
+    const testActive = isTestModeSession() && sessionStarted;
+    testQuestionPill.style.display = testActive ? "inline-block" : "none";
+    testCorrectPill.style.display = testActive ? "inline-block" : "none";
+    testWrongPill.style.display = testActive ? "inline-block" : "none";
+
+    if (testActive) {
+        testQuestionEl.textContent = Math.min(testIndex + 1, testSequence.length || 0);
+        testTotalEl.textContent = testSequence.length || 0;
+        testCorrectEl.textContent = testCorrect;
+        testWrongEl.textContent = testWrong;
+    }
 }
 
 function formatDailyHistoryTime(ms) {
@@ -1414,7 +1494,6 @@ function endDailyChallenge() {
     }
 
     gameOverEl.style.display = "block";
-    setRetryButtonVisible(false);
     buildModifierButtons();
     buildRows("rowOptions", hiraganaRows, "hiraganaRows", "h_");
     buildRows("katakanaRowOptions", katakanaRows, "katakanaRows", "k_");
@@ -1471,8 +1550,8 @@ function renderScoreHistory() {
 }
 
 function updateTrialConfigVisibility() {
-    trialConfigEl.style.display = settings.timeTrial && !settings.dailyChallenge ? "flex" : "none";
-    comboConfigEl.style.display = settings.comboKana && !settings.dailyChallenge ? "flex" : "none";
+    trialConfigEl.style.display = settings.timeTrial && !settings.dailyChallenge && !settings.testMode ? "flex" : "none";
+    comboConfigEl.style.display = settings.comboKana && !settings.dailyChallenge && !settings.testMode ? "flex" : "none";
     comboSameRowBtn.classList.toggle("btn-secondary", settings.comboMode === "same_row");
     comboRandomBtn.classList.toggle("btn-secondary", settings.comboMode === "random");
     comboSameRowBtn.disabled = sessionStarted;
@@ -1523,6 +1602,7 @@ function buildModifierButtons() {
         ["endless", "Endless Mode"],
         ["timeTrial", "Time Trial Mode"],
         ["dailyChallenge", "Daily Challenge"],
+        ["testMode", "Test Mode"],
         ["comboKana", "Combo Kana Mode"],
         ["focusWeak", "Focus Weak"],
         ["dakuten", "Dakuten"]
@@ -1539,24 +1619,39 @@ function buildModifierButtons() {
                 if (settings.timeTrial) {
                     settings.endless = false;
                     settings.dailyChallenge = false;
+                    settings.testMode = false;
                 }
             } else if (key === "endless") {
                 settings.endless = !settings.endless;
                 if (settings.endless) {
                     settings.timeTrial = false;
                     settings.dailyChallenge = false;
+                    settings.testMode = false;
                 }
             } else if (key === "dailyChallenge") {
                 settings.dailyChallenge = !settings.dailyChallenge;
                 if (settings.dailyChallenge) {
                     settings.timeTrial = false;
                     settings.endless = false;
+                    settings.testMode = false;
+                    settings.comboKana = false;
+                    settings.hint = false;
+                }
+            } else if (key === "testMode") {
+                settings.testMode = !settings.testMode;
+                if (settings.testMode) {
+                    settings.timeTrial = false;
+                    settings.endless = false;
+                    settings.dailyChallenge = false;
                     settings.comboKana = false;
                     settings.hint = false;
                 }
             } else if (key === "comboKana") {
                 settings.comboKana = !settings.comboKana;
-                if (settings.comboKana) settings.dailyChallenge = false;
+                if (settings.comboKana) {
+                    settings.dailyChallenge = false;
+                    settings.testMode = false;
+                }
             } else {
                 settings[key] = !settings[key];
             }
@@ -1616,34 +1711,6 @@ function heatmapColor(char) {
     return "var(--yellow)";
 }
 
-function showPopupForChar(ch, e) {
-    const st = getStats(ch);
-    const tm = getAverageTime(ch);
-    const sr = getSrs(ch);
-
-    popupEl.innerHTML = `
-        <div class="popup-title">${ch}</div>
-        <div>Right: ${st.correct}</div>
-        <div>Wrong: ${st.wrong}</div>
-        <div>Avg time: ${formatDuration(tm)}</div>
-        <div>SRS level: ${sr.level}</div>
-    `;
-
-    popupEl.style.display = "block";
-
-    if (settings.mobileMode) {
-        popupEl.style.left = "50%";
-        popupEl.style.top = "50%";
-        popupEl.style.transform = "translate(-50%, -50%)";
-    } else {
-        popupEl.style.transform = "none";
-        const x = Math.min(window.innerWidth - 180, e.clientX + 10);
-        const y = Math.min(window.innerHeight - 120, e.clientY + 10);
-        popupEl.style.left = x + "px";
-        popupEl.style.top = y + "px";
-    }
-}
-
 function renderHeatmap() {
     heatmapEl.innerHTML = "";
 
@@ -1653,41 +1720,41 @@ function renderHeatmap() {
         cell.textContent = ch;
         cell.style.background = heatmapColor(ch);
 
-        cell.addEventListener("mouseenter", (e) => {
-            hoveredCell = cell;
-            if (!popupLocked) showPopupForChar(ch, e);
-        });
-
-        cell.addEventListener("mousemove", (e) => {
-            if (!popupLocked && hoveredCell === cell) showPopupForChar(ch, e);
-        });
-
-        cell.addEventListener("mouseleave", () => {
-            if (hoveredCell === cell) hoveredCell = null;
-            if (!popupLocked) closePopup();
-        });
-
-        cell.addEventListener("click", (e) => {
+        cell.onclick = (e) => {
             e.stopPropagation();
-            popupLocked = true;
-            hoveredCell = cell;
-            showPopupForChar(ch, e);
-        });
+            const st = getStats(ch);
+            const tm = getAverageTime(ch);
+            const sr = getSrs(ch);
+
+            popupEl.innerHTML = `
+                <div class="popup-title">${ch}</div>
+                <div>Right: ${st.correct}</div>
+                <div>Wrong: ${st.wrong}</div>
+                <div>Avg time: ${formatDuration(tm)}</div>
+                <div>SRS level: ${sr.level}</div>
+            `;
+
+            popupEl.style.display = "block";
+
+            if (settings.mobileMode) {
+                popupEl.style.left = "50%";
+                popupEl.style.top = "50%";
+                popupEl.style.transform = "translate(-50%, -50%)";
+            } else {
+                popupEl.style.transform = "none";
+                const x = Math.min(window.innerWidth - 180, e.clientX + 10);
+                const y = Math.min(window.innerHeight - 120, e.clientY + 10);
+                popupEl.style.left = x + "px";
+                popupEl.style.top = y + "px";
+            }
+        };
 
         heatmapEl.appendChild(cell);
     }
 }
 
-function closePopup() {
-    popupEl.style.display = "none";
-}
-
-document.addEventListener("click", (e) => {
-    if (e.target.closest(".cell") || e.target.closest(".popup")) return;
-    popupLocked = false;
-    hoveredCell = null;
-    closePopup();
-});
+function closePopup() { popupEl.style.display = "none"; }
+document.addEventListener("click", closePopup);
 
 function onSettingsChanged() {
     rebuildCharMap();
@@ -1847,7 +1914,6 @@ function showIdleState() {
     startWrap.style.display = "flex";
     sessionActionsEl.style.display = "none";
     gameOverEl.style.display = "none";
-    setRetryButtonVisible(true);
     gameOverTitleEl.textContent = "Wrong";
     gameOverAnswerEl.textContent = "";
     trialTimerPill.style.display = "none";
@@ -1869,6 +1935,25 @@ function nextCharacter() {
         }
 
         currentChar = dailySequence[dailyIndex] || "あ";
+        hiraganaEl.textContent = currentChar;
+        hiraganaEl.classList.remove("flash-correct", "flash-wrong");
+        charStartTime = Date.now();
+        gameOverTitleEl.textContent = "Wrong";
+        gameOverAnswerEl.textContent = "";
+        hideComboTierNotice();
+        inputEl.disabled = false;
+        inputEl.focus();
+        updateTopStats();
+        return;
+    }
+
+    if (isTestModeSession()) {
+        if (testIndex >= testSequence.length) {
+            endTestMode();
+            return;
+        }
+
+        currentChar = testSequence[testIndex] || "あ";
         hiraganaEl.textContent = currentChar;
         hiraganaEl.classList.remove("flash-correct", "flash-wrong");
         charStartTime = Date.now();
@@ -1950,10 +2035,17 @@ function startSession() {
         dailyStartTime = Date.now();
     }
 
+    if (isTestModeSession()) {
+        testSequence = buildTestSequence();
+        testIndex = 0;
+        testCorrect = 0;
+        testWrong = 0;
+        testStartTime = Date.now();
+    }
+
     updateTopStats();
 
     gameOverEl.style.display = "none";
-    setRetryButtonVisible(true);
     gameOverTitleEl.textContent = "Wrong";
     startWrap.style.display = "none";
     sessionActionsEl.style.display = "flex";
@@ -2020,7 +2112,7 @@ function flashResult(correct, onDone) {
 }
 
 function currentFlowModeIsContinuous() {
-    return settings.endless || settings.timeTrial;
+    return settings.endless || settings.timeTrial || settings.testMode;
 }
 
 function getAnswerForCurrentChar() {
@@ -2061,6 +2153,9 @@ function handleCorrect() {
     if (isDailyChallengeSession()) {
         dailyCorrect += 1;
         dailyIndex += 1;
+    } else if (isTestModeSession()) {
+        testCorrect += 1;
+        testIndex += 1;
     } else if (currentFlowModeIsContinuous()) endlessRunTotal += 1;
 
     updateTopStats();
@@ -2091,6 +2186,9 @@ function handleWrong() {
     if (isDailyChallengeSession()) {
         dailyWrong += 1;
         dailyIndex += 1;
+    } else if (isTestModeSession()) {
+        testWrong += 1;
+        testIndex += 1;
     } else if (currentFlowModeIsContinuous()) {
         endlessRunTotal += 1;
         endlessRunWrong += 1;
@@ -2106,6 +2204,9 @@ function handleWrong() {
     if (isDailyChallengeSession()) {
         hintEl.textContent = `Answer: ${correctAnswer}`;
         flashResult(false, () => nextCharacter());
+    } else if (isTestModeSession()) {
+        hintEl.textContent = `Answer: ${correctAnswer}`;
+        flashResult(false, () => nextCharacter());
     } else if (currentFlowModeIsContinuous()) {
         hintEl.textContent = `Answer: ${correctAnswer}`;
         flashResult(false, () => nextCharacter());
@@ -2113,7 +2214,6 @@ function handleWrong() {
         gameOverAnswerEl.textContent = `Correct answer: ${correctAnswer}`;
         flashResult(false, () => {
             gameOverEl.style.display = "block";
-            setRetryButtonVisible(true);
             inputEl.disabled = true;
         });
     }
@@ -2142,12 +2242,9 @@ inputEl.addEventListener("input", () => {
 });
 
 retryBtn.addEventListener("click", () => {
-    if (!sessionStarted) return;
     gameOverEl.style.display = "none";
-    setRetryButtonVisible(true);
     gameOverAnswerEl.textContent = "";
-    inputEl.disabled = false;
-    nextCharacter();
+    startSession();
 });
 
 startBtn.addEventListener("click", startSession);
@@ -2171,6 +2268,113 @@ function average(arr) {
     return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
+
+function buildTestModeBreakdown() {
+    const result = {
+        hiragana: { correct: 0, wrong: 0 },
+        katakana: { correct: 0, wrong: 0 }
+    };
+
+    Object.entries(sessionStats.perChar || {}).forEach(([char, data]) => {
+        const isHiragana = /[ぁ-ゖゝゞ]/.test(char);
+        const isKatakana = /[ァ-ヺヽヾ]/.test(char);
+        if (isHiragana) {
+            result.hiragana.correct += data.correct || 0;
+            result.hiragana.wrong += data.wrong || 0;
+        } else if (isKatakana) {
+            result.katakana.correct += data.correct || 0;
+            result.katakana.wrong += data.wrong || 0;
+        }
+    });
+
+    return result;
+}
+
+function buildTestModeKanaResults() {
+    const sourceMap = getTestModePoolMap();
+    const out = {};
+    Object.keys(sourceMap).forEach(char => {
+        const data = sessionStats.perChar[char] || { correct: 0, wrong: 0, times: [] };
+        out[char] = {
+            romaji: sourceMap[char] || "",
+            correct: Number(data.correct || 0),
+            wrong: Number(data.wrong || 0),
+            avgMs: data.times && data.times.length ? Math.round(average(data.times)) : 0
+        };
+    });
+    return out;
+}
+
+function saveTestModeResult() {
+    const durationMs = Math.max(0, Date.now() - testStartTime);
+    const kana = buildTestModeKanaResults();
+    const breakdown = buildTestModeBreakdown();
+    const total = sessionStats.answered || (testCorrect + testWrong);
+    const result = {
+        id: `reading-test-${Date.now()}`,
+        type: "test",
+        title: `Reading Test #${new Date().toLocaleDateString()}`,
+        mode: "reading",
+        date: new Date().toISOString().slice(0, 10),
+        startedAt: new Date(testStartTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+        overallScore: total ? Math.round((testCorrect / total) * 100) : 0,
+        correct: testCorrect,
+        wrong: testWrong,
+        total,
+        durationMs,
+        avgMs: sessionStats.timings.length ? Math.round(average(sessionStats.timings)) : 0,
+        dakuten: !!settings.dakuten,
+        kanaAsked: testSequence.length,
+        notes: "Full shuffled reading test run.",
+        breakdown,
+        kana
+    };
+
+    const existing = loadJSON("testModeResults", []);
+    const list = Array.isArray(existing) ? existing : [];
+    list.unshift(result);
+    localStorage.setItem("testModeResults", JSON.stringify(list));
+}
+
+function endTestMode() {
+    sessionStarted = false;
+    sessionStats.active = false;
+    stopTrialTimer();
+    inputEl.disabled = true;
+    gameOverEl.style.display = "none";
+    setRetryButtonVisible(true);
+    sessionActionsEl.style.display = "none";
+    startWrap.style.display = "flex";
+    clearHint();
+    hiraganaEl.textContent = "—";
+    currentChar = "";
+    saveTestModeResult();
+
+    const durationMs = Math.max(0, Date.now() - testStartTime);
+    const scorePct = (testCorrect + testWrong) ? Math.round((testCorrect / (testCorrect + testWrong)) * 100) : 0;
+
+    sessionStatsGrid.innerHTML = [
+        ["Score", `${scorePct}%`],
+        ["Correct", testCorrect],
+        ["Wrong", testWrong],
+        ["Questions", testSequence.length || 0],
+        ["Avg Time", formatDuration(sessionStats.timings.length ? average(sessionStats.timings) : 0)],
+        ["Test Time", formatDuration(durationMs)]
+    ].map(([label, value]) => `
+        <div class="stat-card">
+            <div class="label">${label}</div>
+            <div class="value">${value}</div>
+        </div>
+    `).join("");
+
+    sessionHardList.style.display = "none";
+    sessionEasyList.style.display = "none";
+    sessionModalBackdrop.querySelector("h2").textContent = "Reading Test Complete";
+    sessionModalBackdrop.classList.add("open");
+
+    updateTopStats();
+    onSettingsChanged();
+}
 function updateBestScores() {
     scoreHistory = normalizeScoreHistory(scoreHistory);
 
@@ -2315,7 +2519,6 @@ function endSession(autoEnded = false) {
         stopTrialTimer();
         inputEl.disabled = true;
         gameOverEl.style.display = "none";
-        setRetryButtonVisible(true);
         sessionActionsEl.style.display = "none";
         startWrap.style.display = "flex";
         clearHint();
@@ -2333,7 +2536,6 @@ function endSession(autoEnded = false) {
 
     inputEl.disabled = true;
     gameOverEl.style.display = "none";
-    setRetryButtonVisible(true);
     sessionActionsEl.style.display = "none";
     startWrap.style.display = "flex";
     clearHint();
@@ -2527,7 +2729,6 @@ resetBtn.addEventListener("click", () => {
     sessionModalBackdrop.classList.remove("open");
     importModalBackdrop.classList.remove("open");
     gameOverEl.style.display = "none";
-    setRetryButtonVisible(true);
     showIdleState();
     onSettingsChanged();
 });
