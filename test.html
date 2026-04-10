@@ -1640,6 +1640,192 @@ const KANA_MODAL_CHAR = document.getElementById("kanaModalChar");
 const KANA_MODAL_ROMAJI = document.getElementById("kanaModalRomaji");
 const KANA_MODAL_STATS = document.getElementById("kanaModalStats");
 
+
+let DEBUG_PANEL = null;
+
+function closeDebugPanel() {
+    if (DEBUG_PANEL && DEBUG_PANEL.parentNode) {
+        DEBUG_PANEL.parentNode.removeChild(DEBUG_PANEL);
+    }
+    DEBUG_PANEL = null;
+}
+
+function getDebugStorageKeysForMode(mode) {
+    if (mode === "writing") {
+        return [WRITING_TEST_RESULTS_STORAGE_KEY, WRITING_TEST_RESULTS_STORAGE_BACKUP_KEY];
+    }
+    return [
+        READING_TEST_RESULTS_STORAGE_KEY,
+        READING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        READING_TEST_RESULTS_ALT_STORAGE_KEY,
+        READING_TEST_RESULTS_ALT_STORAGE_BACKUP_KEY
+    ];
+}
+
+function deleteStoredTest(testId, mode) {
+    if (!testId) return;
+
+    const storageKeys = [...new Set(getDebugStorageKeysForMode(mode))];
+    storageKeys.forEach(key => {
+        const current = loadJSON(key, []);
+        if (!Array.isArray(current)) return;
+        const filtered = current.filter(item => String(item?.id || "") !== String(testId));
+        localStorage.setItem(key, JSON.stringify(filtered));
+    });
+
+    STORED_RESULTS = loadStoredResults();
+
+    if (!STORED_RESULTS.find(item => item.id === selectedResultId)) {
+        selectedResultId = STORED_RESULTS[0]?.id || null;
+        selectedKana = null;
+    }
+
+    renderAll();
+    renderDebugPanel();
+}
+
+function getStorageKeyDebugInfo() {
+    const keys = [
+        READING_TEST_RESULTS_STORAGE_KEY,
+        READING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        READING_TEST_RESULTS_ALT_STORAGE_KEY,
+        READING_TEST_RESULTS_ALT_STORAGE_BACKUP_KEY,
+        WRITING_TEST_RESULTS_STORAGE_KEY,
+        WRITING_TEST_RESULTS_STORAGE_BACKUP_KEY
+    ];
+
+    return [...new Set(keys)].map(key => {
+        const raw = localStorage.getItem(key);
+        let count = 0;
+        let parseError = "";
+        if (raw) {
+            try {
+                const parsed = JSON.parse(raw);
+                count = Array.isArray(parsed) ? parsed.length : 0;
+            } catch (err) {
+                parseError = err && err.message ? err.message : "Invalid JSON";
+            }
+        }
+        return {
+            key,
+            present: raw !== null,
+            count,
+            rawLength: raw ? raw.length : 0,
+            parseError
+        };
+    });
+}
+
+function renderDebugPanel() {
+    if (!DEBUG_PANEL) {
+        DEBUG_PANEL = document.createElement("div");
+        DEBUG_PANEL.id = "debugPanel";
+        DEBUG_PANEL.style.position = "fixed";
+        DEBUG_PANEL.style.right = "16px";
+        DEBUG_PANEL.style.bottom = "16px";
+        DEBUG_PANEL.style.zIndex = "9999";
+        DEBUG_PANEL.style.width = "min(380px, calc(100vw - 32px))";
+        DEBUG_PANEL.style.maxHeight = "70vh";
+        DEBUG_PANEL.style.overflow = "auto";
+        DEBUG_PANEL.style.padding = "14px";
+        DEBUG_PANEL.style.borderRadius = "16px";
+        DEBUG_PANEL.style.background = "rgba(12,12,12,0.96)";
+        DEBUG_PANEL.style.border = "1px solid rgba(255,255,255,0.12)";
+        DEBUG_PANEL.style.boxShadow = "0 16px 40px rgba(0,0,0,0.45)";
+        DEBUG_PANEL.style.fontFamily = "Arial, sans-serif";
+        DEBUG_PANEL.style.fontSize = "12px";
+        DEBUG_PANEL.style.lineHeight = "1.45";
+        DEBUG_PANEL.style.color = "#f3f3f3";
+        document.body.appendChild(DEBUG_PANEL);
+    }
+
+    const readingResults = loadModeResultsFromKeys([
+        READING_TEST_RESULTS_STORAGE_KEY,
+        READING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        READING_TEST_RESULTS_ALT_STORAGE_KEY,
+        READING_TEST_RESULTS_ALT_STORAGE_BACKUP_KEY
+    ], "reading");
+
+    const writingResults = loadModeResultsFromKeys([
+        WRITING_TEST_RESULTS_STORAGE_KEY,
+        WRITING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        READING_TEST_RESULTS_STORAGE_KEY,
+        READING_TEST_RESULTS_STORAGE_BACKUP_KEY,
+        READING_TEST_RESULTS_ALT_STORAGE_KEY,
+        READING_TEST_RESULTS_ALT_STORAGE_BACKUP_KEY
+    ], "writing");
+
+    const testsOnly = STORED_RESULTS.filter(item => item.type !== "average");
+    const keyInfo = getStorageKeyDebugInfo();
+
+    DEBUG_PANEL.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;">
+            <div style="font-size:13px;font-weight:800;letter-spacing:0.04em;">Storage Debug</div>
+            <button type="button" id="debugCloseBtn" style="border:1px solid rgba(255,255,255,0.14);background:#1f1f1f;color:#f3f3f3;border-radius:8px;padding:4px 9px;cursor:pointer;font-size:12px;">×</button>
+        </div>
+
+        <div style="display:grid;gap:8px;margin-bottom:12px;">
+            <div><strong>Reading results:</strong> ${readingResults.length}</div>
+            <div><strong>Writing results:</strong> ${writingResults.length}</div>
+            <div><strong>Visible tests:</strong> ${testsOnly.length}</div>
+            <div><strong>Selected:</strong> ${selectedResultId || "—"}</div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <div style="font-weight:800;margin-bottom:6px;">Storage keys</div>
+            <div style="display:grid;gap:6px;">
+                ${keyInfo.map(item => `
+                    <div style="padding:8px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                        <div style="font-weight:700;">${item.key}</div>
+                        <div style="color:#bfbfbf;">Present: ${item.present ? "yes" : "no"} · Items: ${item.count} · Raw length: ${item.rawLength}</div>
+                        ${item.parseError ? `<div style="color:#ff9b9b;">Parse error: ${item.parseError}</div>` : ""}
+                    </div>
+                `).join("")}
+            </div>
+        </div>
+
+        <div>
+            <div style="font-weight:800;margin-bottom:6px;">Delete saved tests</div>
+            <div style="color:#bfbfbf;margin-bottom:8px;">Only individual saved tests can be deleted here. Overall averages stay protected.</div>
+            <div style="display:grid;gap:8px;">
+                ${testsOnly.length ? testsOnly.map(item => `
+                    <div style="padding:8px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                            <div style="min-width:0;">
+                                <div style="font-weight:700;">${item.title}</div>
+                                <div style="color:#bfbfbf;font-size:11px;">${item.mode === "reading" ? "Reading" : "Writing"} · ${item.date} · ${item.startedAt}</div>
+                                <div style="color:#8f8f8f;font-size:10px;word-break:break-all;margin-top:3px;">${item.id}</div>
+                            </div>
+                            <button
+                                type="button"
+                                class="debug-delete-btn"
+                                data-test-id="${item.id}"
+                                data-test-mode="${item.mode}"
+                                style="border:1px solid rgba(255,123,123,0.34);background:rgba(120,26,26,0.35);color:#ffd1d1;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:11px;white-space:nowrap;"
+                            >Delete</button>
+                        </div>
+                    </div>
+                `).join("") : `<div style="padding:8px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#bfbfbf;">No individual tests to delete.</div>`}
+            </div>
+        </div>
+    `;
+
+    DEBUG_PANEL.querySelector("#debugCloseBtn")?.addEventListener("click", closeDebugPanel);
+    DEBUG_PANEL.querySelectorAll(".debug-delete-btn").forEach(button => {
+        button.addEventListener("click", () => {
+            const testId = button.dataset.testId;
+            const mode = button.dataset.testMode;
+            deleteStoredTest(testId, mode);
+        });
+    });
+}
+
+window.renderDebugPanel = renderDebugPanel;
+window.closeDebugPanel = closeDebugPanel;
+window.deleteStoredTest = deleteStoredTest;
+
+
+
 function summaryRow(label, value, extra = "") {
     return `
         <div class="summary-row">
