@@ -1437,10 +1437,34 @@ const WRITING_TEST_RESULTS_UPDATED_AT_KEY = "writingTestModeResultsUpdatedAt";
 
 function formatDuration(ms) {
     if (!Number.isFinite(ms) || ms <= 0) return "—";
-    if (ms < 1000) return `${Math.round(ms)} ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-}
 
+    if (ms < 1000) {
+        return `${Math.round(ms)} ms`;
+    }
+
+    const totalSeconds = Math.floor(ms / 1000);
+
+    if (totalSeconds < 60) {
+        return `${totalSeconds}s`;
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (minutes < 60) {
+        return seconds > 0
+            ? `${minutes}m ${seconds}s`
+            : `${minutes}m`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    return remainingMinutes > 0
+        ? `${hours}h ${remainingMinutes}m`
+        : `${hours}h`;
+}
+    
 function loadJSON(key, fallback) {
     try {
         const raw = localStorage.getItem(key);
