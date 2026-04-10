@@ -1167,6 +1167,7 @@ const DEFAULT_SETTINGS = {
     srs: true,
     mobileMode: false,
     keyboardMode: false,
+    keyboardInputType: "kana",
     endless: false,
     timeTrial: false,
     dailyChallenge: false,
@@ -1289,6 +1290,7 @@ let testStartTime = 0;
 let currentBaseChar = "";
 let recentBaseCharHistory = [];
 let pendingImmediateRepeatChar = null;
+let keyboardIsComposing = false;
 
 const titleEl = document.querySelector("h1");
 const sublineEl = document.querySelector(".subline");
@@ -1300,6 +1302,7 @@ const comboTierNoticeEl = document.getElementById("comboTierNotice");
 const choiceGridEl = document.getElementById("choiceGrid");
 const keyboardWrapEl = document.getElementById("keyboardWrap");
 const inputEl = document.getElementById("input");
+const keyboardNoteEl = document.querySelector(".keyboard-note");
 const trialConfigEl = document.getElementById("trialConfig");
 const comboConfigEl = document.getElementById("comboConfig");
 const comboSameRowBtn = document.getElementById("comboSameRowBtn");
@@ -1493,6 +1496,19 @@ function getAnswerMapForCurrentMode() {
     if (isDailyChallengeSession()) return DAILY_CHALLENGE_CHAR_MAP;
     if (isTestModeSession()) return getTestModePoolMap();
     return charMap;
+}
+
+function isRomajiKeyboardMode() {
+    return !!settings.keyboardMode && settings.keyboardInputType === "romaji";
+}
+
+function isKanaKeyboardMode() {
+    return !!settings.keyboardMode && settings.keyboardInputType !== "romaji";
+}
+
+function getPromptForCurrentChar(chars) {
+    if (!chars) return "";
+    return isRomajiKeyboardMode() ? chars : getRomajiForChars(chars);
 }
 
 function getRomajiForChars(chars) {
@@ -1725,12 +1741,47 @@ function applyPanelStates() {
     buttonsModeBtn.disabled = sessionStarted;
     keyboardModeBtn.disabled = sessionStarted;
 
-    choice4Btn.classList.toggle("btn-secondary", settings.choiceCount === 4 && !testModeForcesSixChoices);
-    choice6Btn.classList.toggle("btn-secondary", settings.choiceCount === 6 || testModeForcesSixChoices);
-    choice8Btn.classList.toggle("btn-secondary", settings.choiceCount === 8 && !testModeForcesSixChoices);
-    choice4Btn.disabled = sessionStarted || effectiveKeyboardMode || testModeForcesSixChoices;
-    choice6Btn.disabled = sessionStarted || effectiveKeyboardMode || testModeForcesSixChoices;
-    choice8Btn.disabled = sessionStarted || effectiveKeyboardMode || testModeForcesSixChoices;
+    if (effectiveKeyboardMode) {
+        choice4Btn.textContent = "Romaji Keyboard";
+        choice6Btn.textContent = "Kana Keyboard";
+        choice8Btn.style.display = "none";
+
+        choice4Btn.classList.toggle("btn-secondary", settings.keyboardInputType === "romaji");
+        choice6Btn.classList.toggle("btn-secondary", settings.keyboardInputType !== "romaji");
+        choice8Btn.classList.remove("btn-secondary");
+
+        choice4Btn.disabled = sessionStarted;
+        choice6Btn.disabled = sessionStarted;
+        choice8Btn.disabled = true;
+
+        inputEl.placeholder = settings.keyboardInputType === "romaji"
+            ? "Type with romaji keyboard, then press Enter"
+            : "Type kana...";
+
+        if (keyboardNoteEl) {
+            keyboardNoteEl.textContent = settings.keyboardInputType === "romaji"
+                ? "Romaji Keyboard: the question shows kana. Type with a romaji keyboard, let it convert to kana, then press Enter to check."
+                : "Kana Keyboard: the question shows romaji. Type the kana directly and it will check as you type.";
+        }
+    } else {
+        choice4Btn.textContent = "4 Choices";
+        choice6Btn.textContent = testModeForcesSixChoices ? "6 Choices" : "6 Choices";
+        choice8Btn.textContent = "8 Choices";
+        choice8Btn.style.display = "";
+
+        choice4Btn.classList.toggle("btn-secondary", settings.choiceCount === 4 && !testModeForcesSixChoices);
+        choice6Btn.classList.toggle("btn-secondary", settings.choiceCount === 6 || testModeForcesSixChoices);
+        choice8Btn.classList.toggle("btn-secondary", settings.choiceCount === 8 && !testModeForcesSixChoices);
+
+        choice4Btn.disabled = sessionStarted || testModeForcesSixChoices;
+        choice6Btn.disabled = sessionStarted || testModeForcesSixChoices;
+        choice8Btn.disabled = sessionStarted || testModeForcesSixChoices;
+
+        inputEl.placeholder = "Type kana...";
+        if (keyboardNoteEl) {
+            keyboardNoteEl.textContent = "Keyboard mode is optional. Buttons are the default writing practice input method.";
+        }
+    }
 }
 
 function setBottomTab(tabName) {
@@ -2425,7 +2476,7 @@ function nextCharacter() {
         currentBaseChar = currentChar[0] || "";
         recordShownBaseChar(currentBaseChar);
         pendingImmediateRepeatChar = null;
-        currentPrompt = getRomajiForChars(currentChar);
+        currentPrompt = getPromptForCurrentChar(currentChar);
         currentChoices = settings.keyboardMode ? [] : buildChoiceOptionStrings(currentChar);
         showCurrentPrompt();
         renderChoiceGrid();
@@ -2451,7 +2502,7 @@ function nextCharacter() {
         currentBaseChar = currentChar[0] || "";
         recordShownBaseChar(currentBaseChar);
         pendingImmediateRepeatChar = null;
-        currentPrompt = getRomajiForChars(currentChar);
+        currentPrompt = getPromptForCurrentChar(currentChar);
         currentChoices = settings.keyboardMode ? [] : buildChoiceOptionStrings(currentChar);
         showCurrentPrompt();
         renderChoiceGrid();
@@ -2482,7 +2533,7 @@ function nextCharacter() {
     currentBaseChar = firstPick;
     recordShownBaseChar(currentBaseChar);
     pendingImmediateRepeatChar = null;
-    currentPrompt = getRomajiForChars(currentChar);
+    currentPrompt = getPromptForCurrentChar(currentChar);
     currentChoices = settings.keyboardMode ? [] : buildChoiceOptionStrings(currentChar);
     showCurrentPrompt();
     renderChoiceGrid();
@@ -2656,8 +2707,31 @@ function handleChoiceAnswer(answer, clickedBtn) {
     }
 }
 
+inputEl.addEventListener("compositionstart", () => {
+    keyboardIsComposing = true;
+});
+
+inputEl.addEventListener("compositionend", () => {
+    keyboardIsComposing = false;
+});
+
+inputEl.addEventListener("keydown", (event) => {
+    if (!sessionStarted || locked || !settings.keyboardMode || !isRomajiKeyboardMode() || gameOverEl.style.display === "block") return;
+    if (event.key !== "Enter" || keyboardIsComposing) return;
+
+    event.preventDefault();
+    const value = inputEl.value.trim();
+    if (!value) return;
+
+    if (isAcceptedAnswer(value)) {
+        handleCorrect();
+    } else {
+        handleWrong();
+    }
+});
+
 inputEl.addEventListener("input", () => {
-    if (!sessionStarted || locked || !settings.keyboardMode || gameOverEl.style.display === "block") return;
+    if (!sessionStarted || locked || !settings.keyboardMode || !isKanaKeyboardMode() || gameOverEl.style.display === "block") return;
 
     const value = inputEl.value.trim();
     if (!value) return;
@@ -3154,6 +3228,8 @@ function onSettingsChanged() {
             nextCharacter();
             return;
         }
+        currentPrompt = getPromptForCurrentChar(currentChar);
+        showCurrentPrompt();
         currentChoices = settings.keyboardMode ? [] : buildChoiceOptionStrings(currentChar);
         renderChoiceGrid();
     }
@@ -3302,18 +3378,29 @@ buttonsModeBtn.addEventListener("click", () => {
 keyboardModeBtn.addEventListener("click", () => {
     if (sessionStarted) return;
     settings.keyboardMode = true;
+    if (!["romaji", "kana"].includes(settings.keyboardInputType)) {
+        settings.keyboardInputType = "kana";
+    }
     onSettingsChanged();
 });
 
 choice4Btn.addEventListener("click", () => {
-    if (sessionStarted || settings.keyboardMode) return;
-    settings.choiceCount = 4;
+    if (sessionStarted) return;
+    if (settings.keyboardMode) {
+        settings.keyboardInputType = "romaji";
+    } else {
+        settings.choiceCount = 4;
+    }
     onSettingsChanged();
 });
 
 choice6Btn.addEventListener("click", () => {
-    if (sessionStarted || settings.keyboardMode) return;
-    settings.choiceCount = 6;
+    if (sessionStarted) return;
+    if (settings.keyboardMode) {
+        settings.keyboardInputType = "kana";
+    } else {
+        settings.choiceCount = 6;
+    }
     onSettingsChanged();
 });
 
