@@ -950,81 +950,6 @@
         font-size: 13px;
     }
 
-
-    .cloud-identity {
-        margin-top: 18px;
-        display: grid;
-        gap: 12px;
-        padding: 16px;
-        border-radius: 20px;
-        background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
-        border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .cloud-identity-top {
-        display: flex;
-        justify-content: space-between;
-        gap: 14px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .cloud-user {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .cloud-avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 999px;
-        object-fit: cover;
-        border: 1px solid rgba(255,255,255,0.08);
-        background: rgba(255,255,255,0.06);
-        display: none;
-    }
-
-    .cloud-name {
-        font-size: 16px;
-        font-weight: 800;
-        margin-bottom: 4px;
-    }
-
-    .cloud-email {
-        color: var(--muted);
-        font-size: 13px;
-    }
-
-    .cloud-actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .cloud-btn {
-        appearance: none;
-        border: 1px solid rgba(255,255,255,0.10);
-        background: rgba(255,255,255,0.06);
-        color: var(--text);
-        border-radius: 12px;
-        padding: 10px 14px;
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .cloud-btn.primary {
-        background: rgba(132,187,255,0.16);
-        border-color: rgba(132,187,255,0.28);
-    }
-
-    .cloud-status {
-        color: #d7dbe5;
-        font-size: 14px;
-        line-height: 1.5;
-    }
-
     @media (max-width: 1080px) {
         .hero-grid,
         .mid-band,
@@ -1118,23 +1043,6 @@
                 </div>
                 <div class="hero-copy hero-lead">
                     Jump into practice, track your progress, and keep your streak going.</div>
-
-                <div class="cloud-identity">
-                    <div class="cloud-identity-top">
-                        <div class="cloud-user">
-                            <img class="cloud-avatar" id="cloudAvatar" alt="" />
-                            <div>
-                                <div class="cloud-name" id="cloudName">Guest</div>
-                                <div class="cloud-email" id="cloudEmail">Not signed in</div>
-                            </div>
-                        </div>
-                        <div class="cloud-actions">
-                            <button class="cloud-btn primary" id="cloudSignInBtn" type="button">Sign in with Google</button>
-                            <button class="cloud-btn" id="cloudSignOutBtn" type="button" style="display:none;">Sign out</button>
-                        </div>
-                    </div>
-                    <div class="cloud-status" id="cloudStatusText">Sign in with Google to sync your saves across devices.</div>
-                </div>
 
                 <div class="launch-row">
                     <a class="launch-card reading" href="default.html">
@@ -1317,6 +1225,7 @@
 <script type="module">
 import "./cloud-sync.js";
 await window.KanaCloudSync.beforePageLoad();
+
 function loadJSON(key, fallback) {
     try {
         const raw = localStorage.getItem(key);
@@ -1468,7 +1377,6 @@ function formatKanaGroup(entry, emptyText = '—') {
     const percent = `${Math.round(entry.accuracy * 100)}%`;
     return `${percent} · ${entry.chars.join(', ')}`;
 }
-
 
 function renderSpotlight(modeId, summary) {
     document.getElementById(`${modeId}SpotlightStats`).innerHTML = [
@@ -1677,35 +1585,27 @@ function renderLearningPulse(readingSummary, writingSummary) {
 }
 
 function renderLearningPulseHighlights(readingSummary, writingSummary) {
-    const items = [
-        {
-            label: 'High score edge',
-            winner: readingSummary.highScore === writingSummary.highScore ? 'tie' : (readingSummary.highScore > writingSummary.highScore ? 'reading' : 'writing'),
-            value: readingSummary.highScore === writingSummary.highScore ? `Both at ${readingSummary.highScore}` : `${Math.max(readingSummary.highScore, writingSummary.highScore)} leads`
-        },
-        {
-            label: 'Accuracy edge',
-            winner: readingSummary.accuracy === writingSummary.accuracy ? 'tie' : (readingSummary.accuracy > writingSummary.accuracy ? 'reading' : 'writing'),
-            value: readingSummary.accuracy === writingSummary.accuracy ? `Both at ${readingSummary.accuracy}%` : `${Math.max(readingSummary.accuracy, writingSummary.accuracy)}% top accuracy`
-        },
-        {
-            label: 'Coverage edge',
-            winner: readingSummary.practicedChars === writingSummary.practicedChars ? 'tie' : (readingSummary.practicedChars > writingSummary.practicedChars ? 'reading' : 'writing'),
-            value: readingSummary.practicedChars === writingSummary.practicedChars ? `Both at ${readingSummary.practicedChars}` : `${Math.max(readingSummary.practicedChars, writingSummary.practicedChars)} practiced`
-        }
+    const highlightRows = [
+        readingSummary.highScore === writingSummary.highScore
+            ? summaryRow('High score edge', 'Tie', `Both modes are sitting on ${readingSummary.highScore}`)
+            : (readingSummary.highScore > writingSummary.highScore
+                ? summaryRow('High score edge', 'Reading lead', `${readingSummary.highScore} vs ${writingSummary.highScore}`)
+                : summaryRow('High score edge', 'Writing lead', `${writingSummary.highScore} vs ${readingSummary.highScore}`)),
+
+        readingSummary.accuracy === writingSummary.accuracy
+            ? summaryRow('Accuracy edge', 'Tie', `Both modes are at ${readingSummary.accuracy}%`)
+            : (readingSummary.accuracy > writingSummary.accuracy
+                ? summaryRow('Accuracy edge', 'Reading lead', `${readingSummary.accuracy}% vs ${writingSummary.accuracy}%`)
+                : summaryRow('Accuracy edge', 'Writing lead', `${writingSummary.accuracy}% vs ${readingSummary.accuracy}%`)),
+
+        readingSummary.practicedChars === writingSummary.practicedChars
+            ? summaryRow('Coverage edge', 'Tie', `Both have ${readingSummary.practicedChars} practiced kana`)
+            : (readingSummary.practicedChars > writingSummary.practicedChars
+                ? summaryRow('Coverage edge', 'Reading lead', `${readingSummary.practicedChars} vs ${writingSummary.practicedChars} practiced kana`)
+                : summaryRow('Coverage edge', 'Writing lead', `${writingSummary.practicedChars} vs ${writingSummary.practicedChars} practiced kana`))
     ];
 
-    document.getElementById('learningPulseHighlights').innerHTML = items.map(item => `
-        <div class="pulse-badge">
-            <div>
-                <div class="k">${item.label}</div>
-                <div class="v">${item.value}</div>
-            </div>
-            <div class="pulse-winner ${item.winner}">
-                ${item.winner === 'tie' ? 'Tie' : item.winner === 'reading' ? 'Reading' : 'Writing'}
-            </div>
-        </div>
-    `).join('');
+    document.getElementById('learningPulseHighlights').innerHTML = highlightRows.join('');
 }
 
 function renderLearningPulseCompare(readingSummary, writingSummary) {
@@ -1740,31 +1640,7 @@ function renderLearningPulseCompare(readingSummary, writingSummary) {
     }).join('');
 }
 
-function renderLearningPulseHighlights(readingSummary, writingSummary) {
-    const highlightRows = [
-        readingSummary.highScore === writingSummary.highScore
-            ? summaryRow('High score edge', 'Tie', `Both modes are sitting on ${readingSummary.highScore}`)
-            : (readingSummary.highScore > writingSummary.highScore
-                ? summaryRow('High score edge', 'Reading lead', `${readingSummary.highScore} vs ${writingSummary.highScore}`)
-                : summaryRow('High score edge', 'Writing lead', `${writingSummary.highScore} vs ${readingSummary.highScore}`)),
-
-        readingSummary.accuracy === writingSummary.accuracy
-            ? summaryRow('Accuracy edge', 'Tie', `Both modes are at ${readingSummary.accuracy}%`)
-            : (readingSummary.accuracy > writingSummary.accuracy
-                ? summaryRow('Accuracy edge', 'Reading lead', `${readingSummary.accuracy}% vs ${writingSummary.accuracy}%`)
-                : summaryRow('Accuracy edge', 'Writing lead', `${writingSummary.accuracy}% vs ${readingSummary.accuracy}%`)),
-
-        readingSummary.practicedChars === writingSummary.practicedChars
-            ? summaryRow('Coverage edge', 'Tie', `Both have ${readingSummary.practicedChars} practiced kana`)
-            : (readingSummary.practicedChars > writingSummary.practicedChars
-                ? summaryRow('Coverage edge', 'Reading lead', `${readingSummary.practicedChars} vs ${writingSummary.practicedChars} practiced kana`)
-                : summaryRow('Coverage edge', 'Writing lead', `${writingSummary.practicedChars} vs ${writingSummary.practicedChars} practiced kana`))
-    ];
-
-    document.getElementById('learningPulseHighlights').innerHTML = highlightRows.join('');
-}
-
-function buildDashboardState() {
+function buildSummaries() {
     const readingStats = loadJSON('charStats', {});
     const readingScoreHistory = normalizeScoreHistory(loadJSON('scoreHistory', {}));
     const readingDailyHistory = loadJSON('dailyChallengeHistory', {});
@@ -1775,27 +1651,26 @@ function buildDashboardState() {
     const writingDailyHistory = loadJSON('reverseDailyChallengeHistory', {});
     const writingHighScore = Number(localStorage.getItem('reverseHighScore') || '0');
 
-    const readingSummary = buildModeSummary({
-        stats: readingStats,
-        scoreHistory: readingScoreHistory,
-        dailyHistory: readingDailyHistory,
-        highScore: readingHighScore,
-        modeName: 'Reading Practice'
-    });
-
-    const writingSummary = buildModeSummary({
-        stats: writingStats,
-        scoreHistory: writingScoreHistory,
-        dailyHistory: writingDailyHistory,
-        highScore: writingHighScore,
-        modeName: 'Writing Practice'
-    });
-
-    return { readingSummary, writingSummary };
+    return {
+        readingSummary: buildModeSummary({
+            stats: readingStats,
+            scoreHistory: readingScoreHistory,
+            dailyHistory: readingDailyHistory,
+            highScore: readingHighScore,
+            modeName: 'Reading Practice'
+        }),
+        writingSummary: buildModeSummary({
+            stats: writingStats,
+            scoreHistory: writingScoreHistory,
+            dailyHistory: writingDailyHistory,
+            highScore: writingHighScore,
+            modeName: 'Writing Practice'
+        })
+    };
 }
 
-function renderDashboard() {
-    const { readingSummary, writingSummary } = buildDashboardState();
+function renderAll() {
+    const { readingSummary, writingSummary } = buildSummaries();
     renderHero(readingSummary, writingSummary);
     renderSpotlight('reading', readingSummary);
     renderSpotlight('writing', writingSummary);
@@ -1810,24 +1685,20 @@ function renderDashboard() {
     renderLearningPulseCompare(readingSummary, writingSummary);
 }
 
-async function hydrateAndRender(force = false) {
-    try {
-        await window.KanaCloudSync?.hydrateFromCloud?.(force);
-    } catch (error) {
-        console.warn('Kana dashboard cloud hydration failed.', error);
-    }
-    renderDashboard();
-}
-
-renderDashboard();
-await hydrateAndRender(true);
-setTimeout(() => { hydrateAndRender(true); }, 400);
-setTimeout(() => { hydrateAndRender(true); }, 1200);
-window.addEventListener('focus', () => { hydrateAndRender(true); });
-window.addEventListener('pageshow', () => { hydrateAndRender(true); });
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') hydrateAndRender(true);
+renderAll();
+window.KanaCloudSync.hydrateFromCloud(true).then(() => {
+    renderAll();
+    setTimeout(renderAll, 250);
+    setTimeout(renderAll, 1000);
+}).catch(() => {
+    setTimeout(renderAll, 250);
+    setTimeout(renderAll, 1000);
 });
+window.addEventListener('pageshow', () => setTimeout(renderAll, 100));
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) setTimeout(renderAll, 100);
+});
+window.addEventListener('focus', () => setTimeout(renderAll, 100));
 </script>
 </body>
 </html>
