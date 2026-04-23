@@ -1012,7 +1012,10 @@
     </div>
 </div>
 
-<script>
+<script src="firebase-config.js"></script>
+<script type="module">
+import "./cloud-sync.js";
+await window.KanaCloudSync.beforePageLoad();
 const hiraganaRows = {
     h_a:  {"あ":"a","い":"i","う":"u","え":"e","お":"o"},
     h_ka: {"か":"ka","き":"ki","く":"ku","け":"ke","こ":"ko"},
@@ -1333,6 +1336,7 @@ const dailyHistoryListEl = document.getElementById("dailyHistoryList");
 const timeTrialTop3El = document.getElementById("timeTrialTop3");
 
 function saveAll() {
+    window.KanaCloudSync?.markSectionUpdated("reading");
     localStorage.setItem("settings", JSON.stringify(settings));
     localStorage.setItem("charStats", JSON.stringify(stats));
     localStorage.setItem("charTimes", JSON.stringify(times));
@@ -1340,6 +1344,7 @@ function saveAll() {
     localStorage.setItem("scoreHistory", JSON.stringify(scoreHistory));
     localStorage.setItem("dailyChallengeHistory", JSON.stringify(dailyChallengeHistory));
     localStorage.setItem("highScore", String(highScore));
+    window.KanaCloudSync?.scheduleSync();
 }
 
 function rebuildCharMap() {
@@ -2567,6 +2572,8 @@ function persistStoredTestModeResults(list) {
     localStorage.setItem(TEST_RESULTS_STORAGE_KEY, payload);
     localStorage.setItem(TEST_RESULTS_STORAGE_BACKUP_KEY, payload);
     localStorage.setItem(TEST_RESULTS_UPDATED_AT_KEY, String(Date.now()));
+    window.KanaCloudSync?.markSectionUpdated("readingTests");
+    window.KanaCloudSync?.scheduleSync();
 }
 
 function buildTestModeBreakdown() {
@@ -2968,6 +2975,8 @@ function applyImportedData(payload) {
     localStorage.setItem(TEST_RESULTS_STORAGE_KEY, JSON.stringify(normalizeStoredTestModeResults(importedTestModeResults)));
     localStorage.setItem(TEST_RESULTS_STORAGE_BACKUP_KEY, JSON.stringify(normalizeStoredTestModeResults(importedTestModeResults)));
     localStorage.setItem(TEST_RESULTS_UPDATED_AT_KEY, String(Date.now()));
+    window.KanaCloudSync?.markSectionUpdated("readingTests");
+    window.KanaCloudSync?.scheduleSync();
 
     streak = 0;
     sessionStarted = false;
@@ -3098,6 +3107,10 @@ function init() {
     showIdleState();
     saveAll();
 }
+
+window.addEventListener("focus", () => {
+    window.KanaCloudSync?.hydrateFromCloud(true).catch(() => {});
+});
 
 init();
 </script>

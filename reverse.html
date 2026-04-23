@@ -1115,7 +1115,10 @@
     </div>
 </div>
 
-<script>
+<script src="firebase-config.js"></script>
+<script type="module">
+import "./cloud-sync.js";
+await window.KanaCloudSync.beforePageLoad();
 
 const hiraganaRows = {
     h_a:  {"あ":"a","い":"i","う":"u","え":"e","お":"o"},
@@ -1459,6 +1462,7 @@ const choice6Btn = document.getElementById("choice6Btn");
 const choice8Btn = document.getElementById("choice8Btn");
 
 function saveAll() {
+    window.KanaCloudSync?.markSectionUpdated("writing");
     localStorage.setItem("reverseSettings", JSON.stringify(settings));
     localStorage.setItem("reverseCharStats", JSON.stringify(stats));
     localStorage.setItem("reverseCharTimes", JSON.stringify(times));
@@ -1466,6 +1470,7 @@ function saveAll() {
     localStorage.setItem("reverseScoreHistory", JSON.stringify(scoreHistory));
     localStorage.setItem("reverseDailyChallengeHistory", JSON.stringify(dailyChallengeHistory));
     localStorage.setItem("reverseHighScore", String(highScore));
+    window.KanaCloudSync?.scheduleSync();
 }
 
 function rebuildCharMap() {
@@ -2959,6 +2964,8 @@ function persistStoredTestModeResults(list) {
     localStorage.setItem(TEST_RESULTS_STORAGE_KEY, payload);
     localStorage.setItem(TEST_RESULTS_STORAGE_BACKUP_KEY, payload);
     localStorage.setItem(TEST_RESULTS_UPDATED_AT_KEY, String(Date.now()));
+    window.KanaCloudSync?.markSectionUpdated("writingTests");
+    window.KanaCloudSync?.scheduleSync();
 }
 
 function buildTestModeBreakdown() {
@@ -3415,6 +3422,8 @@ function applyImportedData(payload) {
     localStorage.setItem(TEST_RESULTS_STORAGE_KEY, JSON.stringify(normalizeStoredTestModeResults(importedTestModeResults)));
     localStorage.setItem(TEST_RESULTS_STORAGE_BACKUP_KEY, JSON.stringify(normalizeStoredTestModeResults(importedTestModeResults)));
     localStorage.setItem(TEST_RESULTS_UPDATED_AT_KEY, String(Date.now()));
+    window.KanaCloudSync?.markSectionUpdated("writingTests");
+    window.KanaCloudSync?.scheduleSync();
 
     streak = 0;
     sessionStarted = false;
@@ -3650,6 +3659,10 @@ function init() {
 
     saveAll();
 }
+
+window.addEventListener("focus", () => {
+    window.KanaCloudSync?.hydrateFromCloud(true).catch(() => {});
+});
 
 init();
 

@@ -1461,7 +1461,10 @@
     </div>
 </div>
 
-<script>
+<script src="firebase-config.js"></script>
+<script type="module">
+import "./cloud-sync.js";
+await window.KanaCloudSync.beforePageLoad();
 
 const HIRAGANA_ROWS = {
     h_a:  {"あ":"a","い":"i","う":"u","え":"e","お":"o"},
@@ -2779,7 +2782,10 @@ renderAll();
 // ensure charts render
 setTimeout(() => { const selected = getSelectedResult(); if (selected) drawRowCharts(selected, activeRowGraphView); }, 50);
 
-window.addEventListener("focus", renderAll);
+window.addEventListener("focus", async () => {
+    await window.KanaCloudSync?.hydrateFromCloud(true).catch(() => {});
+    renderAll();
+});
 document.addEventListener("visibilitychange", () => {
     if (!document.hidden) renderAll();
 });
