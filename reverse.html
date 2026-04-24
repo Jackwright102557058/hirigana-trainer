@@ -36,8 +36,9 @@
             radial-gradient(circle at top, rgba(102,168,255,0.22) 0%, transparent 34%),
             radial-gradient(circle at top, #242424 0%, var(--bg-1) 55%);
         display: flex;
-        justify-content: center;
-        align-items: center;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
         padding: 24px;
     }
 
@@ -46,15 +47,16 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        flex: 1 1 auto;
     }
 
     .main {
-        width: min(460px, calc(100vw - 32px));
+        width: min(540px, calc(100vw - 32px));
         background: linear-gradient(180deg, var(--card-bg-top), var(--card-bg-bottom));
         border: 1px solid rgba(102,168,255,0.16);
         border-radius: 20px;
         box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-        padding: 28px 28px 240px;
+        padding: 24px 30px 145px;
         text-align: center;
         position: relative;
     }
@@ -90,7 +92,7 @@
     }
 
     .hiragana-wrap {
-        min-height: 190px;
+        min-height: 162px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -99,7 +101,7 @@
     }
 
     .hiragana {
-        font-size: 144px;
+        font-size: 128px;
         line-height: 1;
         transition: color 0.2s ease, transform 0.2s ease, text-shadow 0.2s ease;
         text-shadow: 0 0 18px rgba(255,255,255,0.08);
@@ -770,6 +772,7 @@
         body {
             display: block;
             padding: 12px;
+            overflow: auto;
         }
 
         .app-shell { display: block; }
@@ -803,7 +806,7 @@
     }
 
     .prompt-wrap {
-        min-height: 190px;
+        min-height: 162px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -812,7 +815,7 @@
     }
 
     .prompt {
-        font-size: 110px;
+        font-size: 96px;
         line-height: 1;
         transition: color 0.2s ease, transform 0.2s ease, text-shadow 0.2s ease;
         text-shadow: 0 0 18px rgba(255,255,255,0.08);
@@ -820,7 +823,7 @@
     }
 
     .prompt-small {
-        font-size: 84px;
+        font-size: 74px;
     }
 
     .choice-grid {
@@ -896,9 +899,437 @@
         background: radial-gradient(circle at top, #13233c 0%, var(--bg-1) 58%);
     }
 
+
+
+    /* Mode Atlas study navigation */
+    .study-nav {
+        position: relative;
+        width: min(1120px, 100%);
+        margin: 0 auto 14px;
+        z-index: 80;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 12px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(18,22,32,0.86), rgba(10,12,18,0.74));
+        border: 1px solid rgba(255,255,255,0.10);
+        box-shadow: 0 18px 48px rgba(0,0,0,0.34);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        transition: transform 0.24s ease, opacity 0.24s ease;
+    }
+
+    body.study-nav-hidden .study-nav {
+        display: none;
+    }
+
+    .study-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        text-decoration: none;
+        color: var(--text);
+        padding: 4px 8px 4px 4px;
+        border-radius: 999px;
+    }
+
+    .study-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        font-weight: 900;
+        letter-spacing: -0.08em;
+        background:
+            radial-gradient(circle at 26% 22%, rgba(255,255,255,0.22), transparent 28%),
+            linear-gradient(135deg, rgba(125,181,255,0.95), rgba(181,150,255,0.95));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 10px 22px rgba(0,0,0,0.24);
+    }
+
+    .study-mark.reading-mark {
+        background:
+            radial-gradient(circle at 26% 22%, rgba(255,255,255,0.22), transparent 28%),
+            linear-gradient(135deg, rgba(103,215,139,0.96), rgba(132,187,255,0.86));
+        color: #061018;
+    }
+
+    .study-mark.writing-mark {
+        background:
+            radial-gradient(circle at 26% 22%, rgba(255,255,255,0.22), transparent 28%),
+            linear-gradient(135deg, rgba(102,168,255,0.96), rgba(182,148,255,0.88));
+        color: #061018;
+    }
+
+    .study-brand-text {
+        display: grid;
+        gap: 1px;
+        line-height: 1.1;
+    }
+
+    .study-platform {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+    }
+
+    .study-title {
+        color: #fff;
+        font-size: 14px;
+        font-weight: 850;
+        white-space: nowrap;
+    }
+
+    .study-links {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .study-link,
+    .study-nav-btn {
+        appearance: none;
+        border: 1px solid rgba(255,255,255,0.09);
+        background: rgba(255,255,255,0.045);
+        color: var(--text);
+        text-decoration: none;
+        border-radius: 999px;
+        padding: 9px 12px;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
+    }
+
+    .study-link:hover,
+    .study-nav-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(0,0,0,0.22);
+    }
+
+    .study-link.atlas:hover { border-color: rgba(182,148,255,0.55); background: rgba(182,148,255,0.13); color: #ede4ff; }
+    .study-link.kana:hover { border-color: rgba(246,211,138,0.55); background: rgba(246,211,138,0.12); color: #fff0c3; }
+    .study-link.reading:hover { border-color: rgba(103,215,139,0.55); background: rgba(103,215,139,0.12); color: #c9f9d9; }
+    .study-link.writing:hover { border-color: rgba(102,168,255,0.55); background: rgba(102,168,255,0.13); color: #d8e8ff; }
+    .study-link.results:hover { border-color: rgba(246,211,138,0.55); background: rgba(246,211,138,0.12); color: #fff0c3; }
+    .study-nav-btn.profile:hover { border-color: rgba(255,159,202,0.55); background: rgba(255,159,202,0.12); color: #ffe2ef; }
+    .study-nav-btn.hide:hover { border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.10); }
+
+    .study-link.active {
+        border-color: #66a8ff;
+        background: rgba(255,255,255,0.05);
+        color: #fff;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 0 1px #66a8ff;
+    }
+
+
+    .study-nav-btn.profile-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.06);
+        border-color: rgba(255,255,255,0.08);
+        padding: 9px 13px 9px 10px;
+    }
+
+    .study-nav-btn.profile-trigger:hover {
+        color: white;
+        background: rgba(255,255,255,0.075);
+        border-color: rgba(255,255,255,0.13);
+    }
+
+    .profile-dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        background: linear-gradient(135deg, rgba(117,227,168,0.95), rgba(125,181,255,0.95));
+        color: #061018;
+        font-weight: 900;
+        overflow: hidden;
+        line-height: 1;
+    }
+
+    .profile-dot img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .study-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .study-nav-handle {
+        position: fixed;
+        top: 14px;
+        right: 14px;
+        z-index: 79;
+        display: none;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(18,22,32,0.78);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 9px 12px;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 14px 34px rgba(0,0,0,0.30);
+    }
+
+    body.study-nav-hidden .study-nav-handle { display: inline-flex; }
+
+    body:not(.study-nav-hidden) .side-panel {
+        top: 88px;
+        max-height: calc(100vh - 178px);
+    }
+
+    @media (max-width: 760px) {
+        body:not(.study-nav-hidden) .side-panel {
+            top: auto;
+            max-height: none;
+        }
+    }
+
+    .profile-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 120;
+        background: rgba(0,0,0,0.52);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+    }
+
+    .profile-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .profile-drawer {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        bottom: 16px;
+        width: min(420px, calc(100vw - 32px));
+        padding: 22px;
+        border-radius: 32px;
+        background:
+            radial-gradient(circle at 88% 10%, rgba(125,181,255,0.18), transparent 30%),
+            linear-gradient(180deg, rgba(19,24,39,0.96), rgba(7,9,18,0.98));
+        border: 1px solid rgba(255,255,255,0.10);
+        box-shadow: 0 30px 90px rgba(0,0,0,0.52);
+        transform: translateX(calc(100% + 24px));
+        transition: transform 0.22s ease;
+        overflow-y: auto;
+    }
+
+    .profile-overlay.open .profile-drawer { transform: translateX(0); }
+
+    .profile-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .profile-kicker {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .profile-title { font-size: 24px; line-height: 1; font-weight: 900; letter-spacing: -0.04em; }
+
+    .profile-close {
+        appearance: none;
+        width: 42px;
+        height: 42px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.09);
+        background: rgba(255,255,255,0.05);
+        color: white;
+        cursor: pointer;
+        font-size: 22px;
+    }
+
+    .profile-card {
+        border-radius: 26px;
+        padding: 18px;
+        background: rgba(255,255,255,0.055);
+        border: 1px solid rgba(255,255,255,0.085);
+        display: grid;
+        gap: 14px;
+    }
+
+    .profile-user {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .profile-avatar {
+        width: 66px;
+        height: 66px;
+        border-radius: 22px;
+        object-fit: cover;
+        display: none;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .profile-name {
+        font-size: 19px;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        margin-bottom: 5px;
+        overflow-wrap: anywhere;
+    }
+
+    .profile-email {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .profile-status {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    .profile-actions {
+        display: grid;
+        gap: 10px;
+    }
+
+    .profile-action {
+        appearance: none;
+        width: 100%;
+        border: 1px solid rgba(255,255,255,0.10);
+        background: rgba(255,255,255,0.055);
+        color: var(--text);
+        border-radius: 16px;
+        padding: 12px 14px;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 900;
+    }
+
+    .profile-action.primary {
+        background: linear-gradient(135deg, rgba(125,181,255,0.28), rgba(181,150,255,0.20));
+        border-color: rgba(125,181,255,0.26);
+    }
+
+    @media (max-width: 920px) {
+        .study-nav {
+            border-radius: 24px;
+            align-items: flex-start;
+            flex-direction: column;
+        }
+        .study-links { justify-content: flex-start; }
+    
+    .study-nav-btn.profile-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.06);
+        border-color: rgba(255,255,255,0.08);
+        padding: 9px 13px 9px 10px;
+    }
+
+    .study-nav-btn.profile-trigger:hover {
+        color: white;
+        background: rgba(255,255,255,0.075);
+        border-color: rgba(255,255,255,0.13);
+    }
+
+    .profile-dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        background: linear-gradient(135deg, rgba(117,227,168,0.95), rgba(125,181,255,0.95));
+        color: #061018;
+        font-weight: 900;
+        overflow: hidden;
+        line-height: 1;
+    }
+
+    .profile-dot img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .study-nav-actions { width: 100%; justify-content: space-between; }
+    }
+
+    @media (max-width: 640px) {
+        .study-brand-text { display: none; }
+        .study-link,
+        .study-nav-btn { padding: 8px 10px; font-size: 12px; }
+    }
+
+
+    body.study-nav-hidden .app-shell {
+        min-height: 100vh;
+    }
+
 </style>
 </head>
 <body>
+
+<nav class="study-nav" id="studyNav" aria-label="Study navigation">
+    <a class="study-brand" href="index.html" aria-label="Mode Atlas home">
+        <span class="study-mark writing-mark">書</span>
+        <span class="study-brand-text">
+            <span class="study-platform">Mode Atlas</span>
+            <span class="study-title">Kana Trainer · Writing Practice</span>
+        </span>
+    </a>
+    <div class="study-links">
+        <a class="study-link atlas" href="index.html">Atlas</a>
+        <a class="study-link kana" href="kana.html">Kana Home</a>
+        <a class="study-link reading" href="default.html">Reading</a>
+        <a class="study-link writing active" href="reverse.html">Writing</a>
+        <a class="study-link results" href="test.html">Results</a>
+    </div>
+    <div class="study-nav-actions">
+        <button class="study-nav-btn profile profile-trigger" id="studyProfileBtn" type="button">
+            <span class="profile-dot" id="studyTopProfileDot">M</span>
+            <span>Profile</span>
+        </button>
+        <button class="study-nav-btn hide" id="studyNavHideBtn" type="button">Hide nav</button>
+    </div>
+</nav>
+<button class="study-nav-handle" id="studyNavShowBtn" type="button">Show nav</button>
+
 <div class="app-shell">
     <div class="main">
         <div class="beta-badge" style="display:inline-flex; align-items:center; gap:8px; padding:7px 12px; margin-bottom:10px; font-size:13px;">Experimental Feature <span style="opacity:0.8;">Beta</span></div>
@@ -1016,6 +1447,33 @@
     </div>
 </div>
 
+
+<div class="profile-overlay" id="studyProfileOverlay" aria-hidden="true">
+    <aside class="profile-drawer" role="dialog" aria-modal="true" aria-labelledby="studyProfileTitle">
+        <div class="profile-top">
+            <div>
+                <div class="profile-kicker">Profile</div>
+                <div class="profile-title" id="studyProfileTitle">Study identity</div>
+            </div>
+            <button class="profile-close" id="studyProfileClose" type="button" aria-label="Close profile">×</button>
+        </div>
+        <div class="profile-card">
+            <div class="profile-user">
+                <img class="profile-avatar" id="studyProfileAvatar" alt="" />
+                <div>
+                    <div class="profile-name" id="studyProfileName">Guest</div>
+                    <div class="profile-email" id="studyProfileEmail">Not signed in</div>
+                </div>
+            </div>
+            <div class="profile-status" id="studyProfileStatus">Sign in with Google from Mode Atlas to sync your study data across devices.</div>
+            <div class="profile-actions">
+                <button class="profile-action primary" id="studyProfileSignIn" type="button">Sign in with Google</button>
+                <button class="profile-action" id="studyProfileSignOut" type="button" style="display:none;">Sign out</button>
+            </div>
+        </div>
+    </aside>
+</div>
+
 <div id="popup" class="popup"></div>
 
 <div class="bottom-shell">
@@ -1059,15 +1517,6 @@
             <div>
                 <div class="section-title">Options</div>
                 <div id="optionButtons" class="button-grid"></div>
-                <div style="margin-top: 14px;">
-                    <div class="section-title" style="margin-bottom: 8px; font-size: 14px;">Experimental Feature</div>
-                    <div class="button-grid" style="justify-items: center;">
-                        <a class="nav-btn nav-btn-small" href="index.html">Home</a>
-                        <a class="nav-btn nav-btn-small" href="default.html">Reading Practice</a>
-                        <a class="nav-btn nav-btn-small" href="kana.html">Kana Trainer</a>
-                        <a class="nav-btn nav-btn-small" href="test.html">Test Results</a>
-                    </div>
-                </div>
                 <div class="version-tag">Writing Practice v1.0</div>
             </div>
 
@@ -1115,12 +1564,86 @@
     </div>
 </div>
 
+
+<script>
+(function () {
+    const storageKey = 'kanaTrainerNavHidden';
+    const body = document.body;
+    const profileBtn = document.getElementById('studyProfileBtn');
+    const overlay = document.getElementById('studyProfileOverlay');
+    const closeBtn = document.getElementById('studyProfileClose');
+    const hideBtn = document.getElementById('studyNavHideBtn');
+    const showBtn = document.getElementById('studyNavShowBtn');
+
+    function setNavHidden(hidden) {
+        body.classList.toggle('study-nav-hidden', hidden);
+        try { localStorage.setItem(storageKey, hidden ? '1' : '0'); } catch {}
+    }
+
+    function openProfile() {
+        if (!overlay) return;
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeProfile() {
+        if (!overlay) return;
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    try {
+        if (localStorage.getItem(storageKey) === '1') body.classList.add('study-nav-hidden');
+    } catch {}
+
+    profileBtn?.addEventListener('click', openProfile);
+    closeBtn?.addEventListener('click', closeProfile);
+    overlay?.addEventListener('click', (event) => { if (event.target === overlay) closeProfile(); });
+    hideBtn?.addEventListener('click', () => setNavHidden(true));
+    showBtn?.addEventListener('click', () => setNavHidden(false));
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeProfile(); });
+})();
+</script>
+
 <script src="firebase-config.js"></script>
 <script type="module">
 import "./cloud-sync.js";
-await window.KanaCloudSync.beforePageLoad();
 
-const hiraganaRows = {
+function updateStudyTopProfileDot() {
+    const dot = document.getElementById('studyTopProfileDot');
+    if (!dot || !window.KanaCloudSync) return;
+    const user = window.KanaCloudSync.getUser?.();
+    if (user?.photoURL) {
+        dot.innerHTML = `<img src="${user.photoURL}" alt="" />`;
+        return;
+    }
+    const label = (user?.displayName || user?.email || 'M').trim();
+    dot.textContent = (label[0] || 'M').toUpperCase();
+}
+
+(window.KanaCloudSync?.beforePageLoad?.() || Promise.resolve()).then(() => {
+    if (!window.KanaCloudSync?.bindUi) return;
+    window.KanaCloudSync.bindUi({
+        signInBtn: document.getElementById('studyProfileSignIn'),
+        signOutBtn: document.getElementById('studyProfileSignOut'),
+        statusEl: document.getElementById('studyProfileStatus'),
+        nameEl: document.getElementById('studyProfileName'),
+        emailEl: document.getElementById('studyProfileEmail'),
+        photoEl: document.getElementById('studyProfileAvatar')
+    });
+    updateStudyTopProfileDot();
+    setTimeout(updateStudyTopProfileDot, 300);
+    setTimeout(updateStudyTopProfileDot, 1200);
+}).catch((error) => {
+    console.warn('Cloud profile controls could not load.', error);
+    const status = document.getElementById('studyProfileStatus');
+    if (status) status.textContent = 'Profile is available, but cloud sign-in could not load on this page.';
+});
+
+document.getElementById('studyProfileSignIn')?.addEventListener('click', () => setTimeout(updateStudyTopProfileDot, 1200));
+document.getElementById('studyProfileSignOut')?.addEventListener('click', () => setTimeout(updateStudyTopProfileDot, 300));
+</script>
+<script>const hiraganaRows = {
     h_a:  {"あ":"a","い":"i","う":"u","え":"e","お":"o"},
     h_ka: {"か":"ka","き":"ki","く":"ku","け":"ke","こ":"ko"},
     h_sa: {"さ":"sa","し":"shi","す":"su","せ":"se","そ":"so"},
@@ -1804,8 +2327,10 @@ function renderScoreHistory() {
 function updateTrialConfigVisibility() {
     trialConfigEl.style.display = settings.timeTrial && !settings.dailyChallenge && !settings.testMode ? "flex" : "none";
     comboConfigEl.style.display = settings.comboKana && !settings.dailyChallenge && !settings.testMode ? "flex" : "none";
-    comboSameRowBtn.classList.toggle("btn-secondary", settings.comboMode === "same_row");
-    comboRandomBtn.classList.toggle("btn-secondary", settings.comboMode === "random");
+    comboSameRowBtn.classList.toggle("active", settings.comboMode === "same_row");
+    comboRandomBtn.classList.toggle("active", settings.comboMode === "random");
+    comboSameRowBtn.classList.remove("btn-secondary");
+    comboRandomBtn.classList.remove("btn-secondary");
     comboSameRowBtn.disabled = sessionStarted;
     comboRandomBtn.disabled = sessionStarted;
 }
@@ -3473,6 +3998,8 @@ endSessionBtn.addEventListener("click", () => endSession(false));
 comboSameRowBtn.addEventListener("click", () => {
     if (sessionStarted) return;
     settings.comboMode = "same_row";
+    comboSameRowBtn.classList.add("active");
+    comboRandomBtn.classList.remove("active");
     updateTrialConfigVisibility();
     saveAll();
 });
@@ -3480,6 +4007,8 @@ comboSameRowBtn.addEventListener("click", () => {
 comboRandomBtn.addEventListener("click", () => {
     if (sessionStarted) return;
     settings.comboMode = "random";
+    comboRandomBtn.classList.add("active");
+    comboSameRowBtn.classList.remove("active");
     updateTrialConfigVisibility();
     saveAll();
 });
