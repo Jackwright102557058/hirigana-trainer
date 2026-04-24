@@ -1312,9 +1312,86 @@
         border: 1px solid rgba(203,163,74,0.34);
     }
 
+
+    /* Mode Atlas branch navigation */
+    .branch-nav {
+        width: min(1320px, 100%);
+        margin: 0 auto 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 14px;
+        border-radius: 24px;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        background: linear-gradient(180deg, rgba(24,27,35,0.82), rgba(12,14,19,0.74));
+        border: 1px solid rgba(255,255,255,0.10);
+        box-shadow: 0 18px 45px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.035);
+        position: sticky;
+        top: 14px;
+        z-index: 60;
+    }
+    .branch-brand { display: inline-flex; align-items: center; gap: 13px; min-width: 0; color: inherit; text-decoration: none; }
+    .branch-mark { width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center; font-weight: 900; font-size: 20px; background: radial-gradient(circle at 28% 24%, rgba(255,255,255,0.20), transparent 30%), linear-gradient(135deg, rgba(203,163,74,0.95), rgba(102,168,255,0.88)); box-shadow: 0 14px 30px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.18); }
+    .branch-meta { min-width: 0; }
+    .branch-kicker { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 800; margin-bottom: 3px; }
+    .branch-name { font-size: 18px; font-weight: 900; letter-spacing: -0.03em; white-space: nowrap; }
+    .branch-links { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .branch-link, .profile-trigger, .drawer-close { appearance: none; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: var(--text); border-radius: 999px; padding: 10px 13px; font: inherit; font-size: 13px; font-weight: 800; text-decoration: none; cursor: pointer; transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease; white-space: nowrap; }
+    .branch-link:hover, .profile-trigger:hover, .drawer-close:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.07); }
+    .branch-link.active { background: rgba(203,163,74,0.16); border-color: rgba(203,163,74,0.32); color: #ffe2a6; }
+    .branch-link.atlas:hover { border-color: rgba(182,148,255,0.42); background: rgba(182,148,255,0.14); color: #eadfff; }
+    .branch-link.overview:hover { border-color: rgba(203,163,74,0.46); background: rgba(203,163,74,0.16); color: #ffe2a6; }
+    .branch-link.reading:hover { border-color: rgba(103,215,139,0.42); background: rgba(103,215,139,0.14); color: #c9f7d8; }
+    .branch-link.writing:hover { border-color: rgba(102,168,255,0.44); background: rgba(102,168,255,0.14); color: #d8e8ff; }
+    .profile-trigger:hover { border-color: rgba(255,159,202,0.42); background: rgba(255,159,202,0.12); color: #ffd8e9; }
+    .profile-trigger { display: inline-flex; align-items: center; gap: 9px; padding: 8px 9px 8px 12px; background: rgba(255,255,255,0.055); }
+    .profile-dot { width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-weight: 900; background: linear-gradient(135deg, rgba(203,163,74,0.92), rgba(102,168,255,0.94)); color: #071018; overflow:hidden; }
+    .profile-dot img { width:100%; height:100%; object-fit:cover; display:block; }
+    .drawer-backdrop { position: fixed; inset: 0; z-index: 80; display: none; background: rgba(0,0,0,0.52); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .drawer-backdrop.open { display: block; }
+    .profile-drawer { position: fixed; top: 18px; right: 18px; z-index: 90; width: min(390px, calc(100vw - 36px)); max-height: calc(100vh - 36px); overflow-y: auto; padding: 18px; border-radius: 28px; background: radial-gradient(circle at top right, rgba(203,163,74,0.18), transparent 34%), linear-gradient(180deg, rgba(22,25,34,0.98), rgba(9,11,16,0.98)); border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 32px 90px rgba(0,0,0,0.55); transform: translateX(calc(100% + 40px)); transition: transform 0.24s ease; }
+    .profile-drawer.open { transform: translateX(0); }
+    .drawer-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 18px; }
+    .drawer-title { font-size: 20px; font-weight: 900; letter-spacing: -0.03em; }
+    .drawer-close { padding: 8px 11px; border-radius: 12px; }
+    .drawer-user { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 20px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px; }
+    .drawer-avatar { width: 56px; height: 56px; border-radius: 18px; object-fit: cover; display: none; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
+    .drawer-name { font-size: 17px; font-weight: 900; margin-bottom: 4px; }
+    .drawer-email, .drawer-status { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .drawer-action { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.05); color: var(--text); text-decoration: none; font-weight: 800; font-size: 13px; cursor: pointer; }
+    .drawer-action.primary { background: rgba(203,163,74,0.16); border-color: rgba(203,163,74,0.30); }
+    @media (max-width: 760px) {
+        .branch-nav { align-items: flex-start; flex-direction: column; position: static; }
+        .branch-links { justify-content: flex-start; }
+        .profile-trigger { width: 100%; justify-content: space-between; }
+        .drawer-actions { grid-template-columns: 1fr; }
+    }
+
 </style>
 </head>
 <body>
+
+<nav class="branch-nav" aria-label="Kana Trainer navigation">
+    <a class="branch-brand" href="kana.html">
+        <div class="branch-mark">測</div>
+        <div class="branch-meta">
+            <div class="branch-kicker">Kana Trainer</div>
+            <div class="branch-name">Test Results</div>
+        </div>
+    </a>
+    <div class="branch-links">
+        <a class="branch-link atlas" href="index.html">Atlas</a>
+        <a class="branch-link overview" href="kana.html">Overview</a>
+        <a class="branch-link reading" href="default.html">Reading</a>
+        <a class="branch-link writing" href="reverse.html">Writing</a>
+        <a class="branch-link active overview" href="test.html">Results</a>
+        <button class="profile-trigger" id="profileOpenBtn" type="button" onclick="window.ModeAtlasTestProfile && window.ModeAtlasTestProfile.open()">Profile <span class="profile-dot" id="profileDot">●</span></button>
+    </div>
+</nav>
+
 <div class="shell">
     <section class="hero glass">
         <div class="hero-grid compact-title">
@@ -1323,10 +1400,7 @@
                 <p class="hero-short-copy">
                     Review saved Reading and Writing test runs, compare them with your overall averages, and quickly spot weak rows and slower sections.
                 </p>
-                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;">
-                <a class="back-link" href="index.html">← Home</a>
-                <a class="back-link" href="kana.html">Kana Trainer</a>
-              </div>
+
             </div>
 
             <div class="hero-side compact">
@@ -1446,6 +1520,27 @@
 </div>
 
 
+<div class="drawer-backdrop" id="profileBackdrop"></div>
+<aside class="profile-drawer" id="profileDrawer" aria-hidden="true">
+    <div class="drawer-head">
+        <div class="drawer-title">Profile</div>
+        <button class="drawer-close" id="profileCloseBtn" type="button">Close</button>
+    </div>
+    <div class="drawer-user">
+        <img class="drawer-avatar" id="profileAvatar" alt="" />
+        <div>
+            <div class="drawer-name" id="profileName">Guest</div>
+            <div class="drawer-email" id="profileEmail">Not signed in</div>
+        </div>
+    </div>
+    <div class="drawer-status" id="profileStatus">Sign in on Mode Atlas to sync your learning across devices.</div>
+    <div class="drawer-actions">
+        <button class="drawer-action primary" id="profileSignInBtn" type="button">Sign in</button>
+        <button class="drawer-action" id="profileSignOutBtn" type="button" style="display:none;">Sign out</button>
+    </div>
+</aside>
+
+
 <div class="modal-backdrop" id="kanaModalBackdrop">
     <div class="modal">
         <button class="modal-close" id="kanaModalClose" type="button">×</button>
@@ -1461,10 +1556,58 @@
     </div>
 </div>
 
+
+<script>
+(function(){
+  function setOpen(isOpen){
+    var drawer = document.getElementById('profileDrawer');
+    var backdrop = document.getElementById('profileBackdrop');
+    if (drawer) {
+      drawer.classList.toggle('open', isOpen);
+      drawer.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    }
+    if (backdrop) backdrop.classList.toggle('open', isOpen);
+  }
+  function bind(){
+    var openBtn = document.getElementById('profileOpenBtn');
+    var closeBtn = document.getElementById('profileCloseBtn');
+    var backdrop = document.getElementById('profileBackdrop');
+    if (openBtn && !openBtn.dataset.profileBound) {
+      openBtn.dataset.profileBound = 'true';
+      openBtn.addEventListener('click', function(event){ event.preventDefault(); setOpen(true); });
+    }
+    if (closeBtn && !closeBtn.dataset.profileBound) {
+      closeBtn.dataset.profileBound = 'true';
+      closeBtn.addEventListener('click', function(){ setOpen(false); });
+    }
+    if (backdrop && !backdrop.dataset.profileBound) {
+      backdrop.dataset.profileBound = 'true';
+      backdrop.addEventListener('click', function(){ setOpen(false); });
+    }
+  }
+  document.addEventListener('keydown', function(event){ if (event.key === 'Escape') setOpen(false); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+  window.ModeAtlasTestProfile = { open: function(){ bind(); setOpen(true); }, close: function(){ setOpen(false); } };
+})();
+</script>
+
 <script src="firebase-config.js"></script>
 <script type="module">
 import "./cloud-sync.js";
 await window.KanaCloudSync.beforePageLoad();
+window.KanaCloudSync?.bindUi?.({
+    signInBtn: document.getElementById('profileSignInBtn'),
+    signOutBtn: document.getElementById('profileSignOutBtn'),
+    statusEl: document.getElementById('profileStatus'),
+    nameEl: document.getElementById('profileName'),
+    emailEl: document.getElementById('profileEmail'),
+    photoEl: document.getElementById('profileAvatar')
+});
+const profileDot = document.getElementById('profileDot');
+window.KanaCloudSync?.ready?.then(() => {
+    const user = window.KanaCloudSync?.getUser?.();
+    if (user?.photoURL && profileDot) profileDot.innerHTML = `<img src="${user.photoURL}" alt="" />`;
+});
 
 const HIRAGANA_ROWS = {
     h_a:  {"あ":"a","い":"i","う":"u","え":"e","お":"o"},
