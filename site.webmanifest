@@ -4,23 +4,26 @@
   "description": "A study ecosystem for kana, words, and future learning branches.",
   "start_url": "/mode-atlas/",
   "display": "standalone",
-  "background_color": "#05060b",
-  "theme_color": "#080b15",
+  "background_color": "#111827",
+  "theme_color": "#111827",
   "icons": [
     {
       "src": "assets/android-chrome-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "assets/apple-touch-icon.png",
       "sizes": "180x180",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "assets/favicon-32.png",
       "sizes": "32x32",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "scope": "/mode-atlas/"
