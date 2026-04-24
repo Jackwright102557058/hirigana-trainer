@@ -1690,6 +1690,50 @@ body[data-display-mode="mobile"] .study-platform { display: none !important; }
   .test-score { font-size: 24px !important; }
 }
 
+
+/* === Test mobile/iPad kana colour fix ===
+   iOS Safari can force button text toward its default blue when a button does
+   not explicitly define color. Test heatmap kana are buttons, so lock them
+   back to the neutral Test Results palette across tablet/mobile layouts. */
+.cell,
+button.cell,
+.cell .cell-char,
+.cell .cell-time,
+.heatmap .cell,
+.heatmap .cell-char,
+.heatmap .cell-time,
+.row-doughnut-card,
+.row-doughnut-label,
+.modal-kana .char,
+.kana-big .char {
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
+}
+
+.cell.reference,
+.cell.reference .cell-char,
+.cell.reference .cell-time {
+  color: rgba(255,255,255,0.72) !important;
+  -webkit-text-fill-color: rgba(255,255,255,0.72) !important;
+}
+
+.cell-badge.fastest,
+.row-flag.best {
+  color: #bdf3cf !important;
+  -webkit-text-fill-color: #bdf3cf !important;
+}
+
+.cell-badge.slowest,
+.row-flag.slowest {
+  color: #ffe2a6 !important;
+  -webkit-text-fill-color: #ffe2a6 !important;
+}
+
+.row-flag.worst {
+  color: #ffb3b3 !important;
+  -webkit-text-fill-color: #ffb3b3 !important;
+}
+
 </style>
 </head>
 <body>
