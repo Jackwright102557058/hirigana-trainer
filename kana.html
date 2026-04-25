@@ -2215,6 +2215,8 @@ profileBackdrop?.addEventListener('click', closeProfileDrawer);
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeProfileDrawer(); });
 
 await window.KanaCloudSync.beforePageLoad();
+try { await window.KanaCloudSync.hydrateFromCloud?.(true); } catch (err) { console.warn('Kana dashboard cloud hydration failed', err); }
+/* ModeAtlas kana dashboard hydration repair */
 
 function loadJSON(key, fallback) {
     try {

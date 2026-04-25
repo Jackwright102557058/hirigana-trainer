@@ -25,6 +25,8 @@
 /* Mode Atlas polish layer */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+JP:wght@500;700;900&family=Sora:wght@700;800;900&display=swap');
 :root {
+        --ma-active-rgb: 102,168,255;
+        --ma-active-text: #d8e8ff;
   --ma-font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --ma-font-display: Sora, Inter, ui-sans-serif, system-ui, sans-serif;
   --ma-font-jp: "Noto Sans JP", Inter, ui-sans-serif, system-ui, sans-serif;
@@ -2254,6 +2256,39 @@ body::before { pointer-events: none; }
 /* Final active states for Writing modifiers */
 .bottom-shell.ma-modifiers-only .toggle-btn.active,
 .bottom-shell.ma-modifiers-only .btn.active{background:linear-gradient(180deg, rgba(102,168,255,.24), rgba(102,168,255,.12)) !important;border-color:rgba(102,168,255,.72) !important;color:#d8e8ff !important;box-shadow:inset 0 0 0 1px rgba(102,168,255,.22), 0 0 0 1px rgba(102,168,255,.14), 0 10px 24px rgba(102,168,255,.10) !important;}
+
+/* === Mode Atlas trainer modifier states repair === */
+.bottom-shell.ma-modifiers-only .toggle-btn,
+.bottom-shell.ma-modifiers-only .btn {
+  border: 1px solid rgba(255,255,255,.10) !important;
+  background: rgba(255,255,255,.045) !important;
+  color: var(--text,#f3f3f3) !important;
+  box-shadow: none !important;
+}
+.bottom-shell.ma-modifiers-only .toggle-btn:hover,
+.bottom-shell.ma-modifiers-only .btn:hover {
+  transform: translateY(-1px) !important;
+  background: rgba(var(--ma-active-rgb, 103,215,139), .12) !important;
+  border-color: rgba(var(--ma-active-rgb, 103,215,139), .46) !important;
+  box-shadow: 0 0 0 1px rgba(var(--ma-active-rgb, 103,215,139), .18), 0 10px 22px rgba(0,0,0,.18) !important;
+}
+.bottom-shell.ma-modifiers-only .toggle-btn.active,
+.bottom-shell.ma-modifiers-only .toggle-btn[aria-pressed="true"],
+.bottom-shell.ma-modifiers-only .btn.active,
+.bottom-shell.ma-modifiers-only .btn[aria-pressed="true"] {
+  transform: translateY(-1px) !important;
+  background: linear-gradient(180deg, rgba(var(--ma-active-rgb, 103,215,139), .30), rgba(var(--ma-active-rgb, 103,215,139), .14)) !important;
+  border-color: rgba(var(--ma-active-rgb, 103,215,139), .78) !important;
+  color: var(--ma-active-text, #d9ffe7) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--ma-active-rgb, 103,215,139), .28), 0 0 0 1px rgba(var(--ma-active-rgb, 103,215,139), .16), 0 12px 26px rgba(var(--ma-active-rgb, 103,215,139), .12) !important;
+}
+.bottom-shell.ma-modifiers-only .toggle-btn.disabled,
+.bottom-shell.ma-modifiers-only .btn:disabled {
+  opacity: .45 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
 </style>
 </head>
 <body><div class="ma-loading-screen" id="maLoadingScreen" aria-live="polite"><div class="ma-loading-card"><div class="ma-loading-head"><div class="ma-loading-mark">学</div><div><div class="ma-loading-title">Mode Atlas</div><div class="ma-loading-sub">Preparing your study space…</div></div></div><div class="ma-skeleton"></div><div class="ma-skeleton"></div><div class="ma-skeleton short"></div></div></div>
@@ -2563,7 +2598,7 @@ function updateStudyTopProfileDot() {
     updateStudyTopProfileDot();
     setTimeout(updateStudyTopProfileDot, 300);
     setTimeout(updateStudyTopProfileDot, 1200);
-    try { if (typeof refreshSaveBackedStateFromCloud === "function") refreshSaveBackedStateFromCloud(); }
+    try { if (typeof window.refreshSaveBackedStateFromCloud === "function") window.refreshSaveBackedStateFromCloud(); }
     catch (err) { console.warn("Trainer refresh after cloud bind failed", err); }
 }).catch((error) => {
     console.warn('Cloud profile controls could not load.', error);
@@ -3352,12 +3387,21 @@ function makeToggleButton(label, active, onClick, disabled = false) {
     div.className = "toggle-btn" + (active ? " active" : "") + (disabled ? " disabled" : "");
     div.textContent = label;
     div.setAttribute("role", "button");
+    div.setAttribute("tabindex", disabled ? "-1" : "0");
     div.setAttribute("aria-pressed", active ? "true" : "false");
     div.onclick = (event) => {
         event.preventDefault();
         event.stopPropagation();
         if (disabled) return;
         onClick();
+        requestAnimationFrame(() => {
+          document.querySelectorAll(".bottom-shell.ma-modifiers-only .toggle-btn[aria-pressed=\"true\"], .bottom-shell.ma-modifiers-only .btn.active").forEach(el => el.classList.add("active"));
+        });
+    };
+    div.onkeydown = (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        div.click();
     };
     return div;
 }
@@ -5106,6 +5150,8 @@ function refreshSaveBackedStateFromCloud() {
     if (DEBUG_PANEL) renderDebugPanel();
 }
 
+window.refreshSaveBackedStateFromCloud = refreshSaveBackedStateFromCloud;
+
 function init() {
     rebuildCharMap();
 
@@ -5136,13 +5182,25 @@ function init() {
 }
 
 function hydrateAndRefreshTrainer() {
-    window.KanaCloudSync?.hydrateFromCloud(true)
-        .then(() => refreshSaveBackedStateFromCloud())
-        .catch(() => refreshSaveBackedStateFromCloud());
+    const doRefresh = () => {
+        try { refreshSaveBackedStateFromCloud(); }
+        catch (err) { console.warn("Trainer refresh failed", err); }
+    };
+    if (window.KanaCloudSync?.hydrateFromCloud) {
+        window.KanaCloudSync.hydrateFromCloud(true).then(doRefresh).catch(doRefresh);
+    } else if (window.KanaCloudSync?.beforePageLoad) {
+        window.KanaCloudSync.beforePageLoad().then(doRefresh).catch(doRefresh);
+    } else {
+        doRefresh();
+    }
 }
 window.addEventListener("focus", hydrateAndRefreshTrainer);
 window.addEventListener("pageshow", () => setTimeout(hydrateAndRefreshTrainer, 120));
 setTimeout(hydrateAndRefreshTrainer, 700);
+/* ModeAtlas trainer late cloud refresh repair */
+setTimeout(hydrateAndRefreshTrainer, 1500);
+setTimeout(hydrateAndRefreshTrainer, 3000);
+setTimeout(hydrateAndRefreshTrainer, 6000);
 
 init();
 
