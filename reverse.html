@@ -2571,7 +2571,7 @@ body::before { pointer-events: none; }
 
 <script src="firebase-config.js"></script>
 <script type="module">
-import "./cloud-sync.js?v=local-import-guard-20260425";
+import "./cloud-sync.js?v=rev-data-drawer-20260425";
 
 function updateStudyTopProfileDot() {
     const dot = document.getElementById('studyTopProfileDot');
@@ -5129,8 +5129,9 @@ importModalBackdrop.addEventListener("click", (e) => {
 });
 
 function refreshSaveBackedStateFromCloud() {
+    const preservedBottomTab = ((settings && settings.activeBottomTab === "modifiers") || document.getElementById("modifiersContent")?.classList.contains("open")) ? "modifiers" : null;
     settings = { ...DEFAULT_SETTINGS, ...loadJSON("reverseSettings", DEFAULT_SETTINGS) };
-    settings.activeBottomTab = null;
+    settings.activeBottomTab = preservedBottomTab;
     stats = loadJSON("reverseCharStats", {});
     times = loadJSON("reverseCharTimes", {});
     srs = loadJSON("reverseCharSrs", {});
@@ -5186,13 +5187,32 @@ function init() {
     // Do not save during initial boot; wait for actual user changes.
 }
 
+function hasWritingLocalDataForPage() {
+    try {
+        const deep = value => {
+            if (!value) return false;
+            if (Array.isArray(value)) return value.some(deep);
+            if (typeof value === "number") return Number.isFinite(value) && value > 0;
+            if (typeof value === "string") { const n = Number(value); return Number.isFinite(n) && n > 0; }
+            if (typeof value === "object") return Object.values(value).some(deep);
+            return false;
+        };
+        return Number(localStorage.getItem("reverseHighScore") || 0) > 0
+            || deep(loadJSON("reverseCharStats", {}))
+            || deep(loadJSON("reverseCharTimes", {}))
+            || deep(loadJSON("reverseScoreHistory", {}))
+            || deep(loadJSON("reverseDailyChallengeHistory", {}));
+    } catch { return false; }
+}
+
 function hydrateAndRefreshTrainer() {
     const doRefresh = () => {
         try { refreshSaveBackedStateFromCloud(); }
         catch (err) { console.warn("Trainer refresh failed", err); }
     };
     if (window.KanaCloudSync?.hydrateFromCloud) {
-        window.KanaCloudSync.hydrateFromCloud().then(doRefresh).catch(doRefresh);
+        const shouldForce = !hasWritingLocalDataForPage();
+        window.KanaCloudSync.hydrateFromCloud(shouldForce).then(doRefresh).catch(doRefresh);
     } else if (window.KanaCloudSync?.beforePageLoad) {
         window.KanaCloudSync.beforePageLoad().then(doRefresh).catch(doRefresh);
     } else {
@@ -5668,5 +5688,31 @@ init();
 })();
 </script>
 
+
+<script>
+(function ModeAtlasKeepModifiersOpenRepair(){
+  function install(){
+    const drawer = document.getElementById('modifiersContent');
+    const tab = document.getElementById('modifiersTab');
+    if (!drawer || drawer.dataset.maKeepOpenRepair) return;
+    drawer.dataset.maKeepOpenRepair = 'true';
+    ['click','pointerdown','touchstart','mousedown'].forEach(type => {
+      drawer.addEventListener(type, event => { event.stopPropagation(); }, true);
+    });
+    drawer.addEventListener('click', () => {
+      const keep = () => {
+        try { settings.activeBottomTab = 'modifiers'; } catch {}
+        drawer.classList.add('open');
+        if (tab) { tab.classList.add('active'); tab.textContent = 'Modifiers ▲'; }
+      };
+      setTimeout(keep, 0);
+      setTimeout(keep, 80);
+      setTimeout(keep, 180);
+    }, true);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
+  setTimeout(install, 300);
+})();
+</script>
 </body>
 </html>
