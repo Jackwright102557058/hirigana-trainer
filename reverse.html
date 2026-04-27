@@ -4469,7 +4469,6 @@ function startSession() {
     }
 
     sessionStarted = true;
-    try { window.ModeAtlasPracticeSessionActive = true; sessionStorage.setItem("modeAtlasPracticeSessionActive", "1"); window.KanaCloudSync?.beginPracticeSessionSyncPause?.(); } catch {}
     sessionStats = createEmptySessionStats();
     sessionStats.active = true;
     sessionStats.startTime = Date.now();
@@ -4636,7 +4635,6 @@ function endTestMode() {
     saveTestModeResult();
 
     sessionStarted = false;
-    try { window.ModeAtlasPracticeSessionActive = false; sessionStorage.removeItem("modeAtlasPracticeSessionActive"); window.KanaCloudSync?.endPracticeSessionSyncPause?.(true); } catch {}
     sessionStats.active = false;
     locked = false;
     stopTrialTimer();
@@ -4817,7 +4815,6 @@ function endDailyChallenge() {
     const existing = dailyChallengeHistory[dateKey];
 
     sessionStarted = false;
-    try { window.ModeAtlasPracticeSessionActive = false; sessionStorage.removeItem("modeAtlasPracticeSessionActive"); window.KanaCloudSync?.endPracticeSessionSyncPause?.(true); } catch {}
     sessionStats.active = false;
     inputEl.disabled = true;
     gameOverEl.style.display = "block";
@@ -4877,7 +4874,6 @@ function endSession(autoEnded = false) {
     }
 
     sessionStarted = false;
-    try { window.ModeAtlasPracticeSessionActive = false; sessionStorage.removeItem("modeAtlasPracticeSessionActive"); window.KanaCloudSync?.endPracticeSessionSyncPause?.(true); } catch {}
     sessionStats.active = false;
     stopTrialTimer();
     updateBestScores();
@@ -5783,6 +5779,6 @@ init();
   <script src="assets/mode-atlas-stable-controls.js"></script>
   <script src="assets/mode-atlas-auth-mobile-fix.js"></script>
   <script src="assets/mode-atlas-auth-single-button.js"></script>
-<script src="assets/mode-atlas-session-sync-defer.js?v=2.8.2"></script>
+  <script src="assets/mode-atlas-session-local-save.js?v=2.8.3"></script>
 </body>
 </html>

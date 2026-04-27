@@ -644,27 +644,31 @@ async function signOutUser() {
 
 function isPracticeSessionActive() {
   try {
-    if (window.ModeAtlasPracticeSessionActive === true) return true;
-    if (sessionStorage.getItem("modeAtlasPracticeSessionActive") === "1") return true;
-  } catch {}
-  return false;
+    return window.ModeAtlasPracticeSessionActive === true || sessionStorage.getItem('modeAtlasPracticeSessionActive') === '1';
+  } catch {
+    return window.ModeAtlasPracticeSessionActive === true;
+  }
 }
 
 function beginPracticeSessionSyncPause() {
   try {
     window.ModeAtlasPracticeSessionActive = true;
-    sessionStorage.setItem("modeAtlasPracticeSessionActive", "1");
-  } catch {}
+    sessionStorage.setItem('modeAtlasPracticeSessionActive', '1');
+  } catch {
+    window.ModeAtlasPracticeSessionActive = true;
+  }
 }
 
 function endPracticeSessionSyncPause(flush = true) {
   try {
     window.ModeAtlasPracticeSessionActive = false;
-    sessionStorage.removeItem("modeAtlasPracticeSessionActive");
-  } catch {}
+    sessionStorage.removeItem('modeAtlasPracticeSessionActive');
+  } catch {
+    window.ModeAtlasPracticeSessionActive = false;
+  }
   if (flush && deferredSessionSyncPending) {
     deferredSessionSyncPending = false;
-    scheduleSync(350);
+    scheduleSync(500);
   }
 }
 
@@ -710,22 +714,13 @@ async function syncNow() {
 
 
 function scheduleSync(delay = 800) {
-  if (isPracticeSessionActive()) {
-    deferredSessionSyncPending = true;
-    return false;
-  }
   clearTimeout(syncTimeout);
   syncTimeout = setTimeout(() => {
-    if (isPracticeSessionActive()) {
-      deferredSessionSyncPending = true;
-      return;
-    }
     syncNow().catch((error) => {
-      console.warn("Cloud save sync failed.", error);
-      setCloudState(false, error?.message || "Cloud sync failed");
+      console.warn('Cloud save sync failed.', error);
+      setCloudState(false, error?.message || 'Cloud sync failed');
     });
   }, delay);
-  return true;
 }
 
 function markSectionUpdated(sectionName) {
