@@ -2152,3 +2152,141 @@ body {
     white-space: normal !important;
   }
 }
+
+/* === v2.9.6 compact mobile nav polish ===
+   Keep mobile nav usable without letting the tab buttons dominate the screen. */
+@media (max-width: 760px), (max-width: 900px) and (orientation: portrait) {
+  .topbar,
+  .branch-nav,
+  .study-nav {
+    width: calc(100vw - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    margin: 10px auto 14px !important;
+    padding: 10px !important;
+    border-radius: 22px !important;
+    gap: 8px 9px !important;
+    min-height: 0 !important;
+  }
+
+  .brand,
+  .branch-brand,
+  .study-brand {
+    gap: 9px !important;
+    max-width: calc(100vw - 116px) !important;
+  }
+
+  .brand-mark,
+  .branch-mark,
+  .study-mark {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    border-radius: 15px !important;
+    font-size: 1.05rem !important;
+  }
+
+  .brand-name,
+  .branch-name,
+  .study-title {
+    font-size: clamp(0.98rem, 4.3vw, 1.2rem) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.035em !important;
+  }
+
+  .nav,
+  .branch-links,
+  .study-links {
+    gap: 6px !important;
+    padding: 1px 0 0 !important;
+    margin-top: 2px !important;
+  }
+
+  .nav-link,
+  .branch-link,
+  .study-link,
+  .study-nav-btn.hide {
+    height: 36px !important;
+    min-height: 36px !important;
+    min-width: 0 !important;
+    padding: 0 10px !important;
+    border-radius: 999px !important;
+    font-size: clamp(0.78rem, 3.2vw, 0.92rem) !important;
+    line-height: 1 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .profile-trigger,
+  .branch-links > .profile-trigger,
+  .nav > .profile-trigger,
+  .study-nav-btn.profile-trigger,
+  #profileOpenBtn,
+  #studyProfileBtn {
+    top: 10px !important;
+    right: 10px !important;
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+    padding: 0 !important;
+  }
+
+  .profile-dot,
+  #topProfileDot,
+  #profileDot,
+  #studyTopProfileDot {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .topbar,
+  .branch-nav,
+  .study-nav {
+    width: calc(100vw - 22px) !important;
+    max-width: calc(100vw - 22px) !important;
+    padding: 9px !important;
+    border-radius: 20px !important;
+  }
+
+  .nav-link,
+  .branch-link,
+  .study-link,
+  .study-nav-btn.hide {
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 8px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .brand-mark,
+  .branch-mark,
+  .study-mark {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    border-radius: 14px !important;
+  }
+
+  .profile-trigger,
+  .branch-links > .profile-trigger,
+  .nav > .profile-trigger,
+  .study-nav-btn.profile-trigger,
+  #profileOpenBtn,
+  #studyProfileBtn {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+  }
+
+  .profile-dot,
+  #topProfileDot,
+  #profileDot,
+  #studyTopProfileDot {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+  }
+}
