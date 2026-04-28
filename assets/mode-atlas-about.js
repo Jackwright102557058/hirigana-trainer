@@ -2,7 +2,7 @@
   if (window.__modeAtlasAboutLoaded) return;
   window.__modeAtlasAboutLoaded = true;
 
-  const APP_VERSION = '2.9.2';
+  const APP_VERSION = '2.9.4';
   const SAVE_SCHEMA_VERSION = '3';
   const BUILD_LABEL = 'Auth/Profile Polish Build';
   const BUILD_DATE = '2026-04-27';

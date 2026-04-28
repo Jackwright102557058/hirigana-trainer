@@ -1782,3 +1782,150 @@ html[data-ma-signed-in="false"] [data-ma-sign-in]{visibility:visible!important;p
 @keyframes maLoaderSafetyFade {
   to { opacity: 0; visibility: hidden; pointer-events: none; }
 }
+
+
+/* === v2.9.3 mobile + iPad layout pass === */
+:root{--ma-mobile-gutter: clamp(14px, 4vw, 24px);}
+html, body{max-width:100%; overflow-x:hidden;}
+
+@media (max-width: 900px){
+  body{padding-left:var(--ma-mobile-gutter)!important;padding-right:var(--ma-mobile-gutter)!important;}
+  .shell,.app-shell,.main,.container,.page,.content{width:100%!important;max-width:100%!important;margin-left:auto!important;margin-right:auto!important;}
+}
+
+/* Phone nav: stable two-row card. Profile/avatar lives on row 1 and never covers row 2. */
+@media (max-width: 760px), (max-width: 900px) and (orientation: portrait){
+  .topbar,.branch-nav,.study-nav{
+    width:100%!important;max-width:100%!important;margin:12px auto 18px!important;
+    padding:14px!important;border-radius:28px!important;overflow:hidden!important;
+    display:grid!important;grid-template-columns:1fr auto!important;grid-template-rows:auto auto!important;
+    gap:12px!important;align-items:center!important;position:relative!important;top:auto!important;
+  }
+  .brand,.branch-brand,.study-brand{
+    grid-column:1!important;grid-row:1!important;max-width:calc(100vw - 132px)!important;
+    min-width:0!important;display:inline-flex!important;align-items:center!important;gap:12px!important;
+  }
+  .brand-mark,.branch-mark,.study-mark{width:52px!important;height:52px!important;min-width:52px!important;border-radius:18px!important;}
+  .brand-name,.branch-name,.study-title{font-size:clamp(1.05rem,4.7vw,1.4rem)!important;line-height:1.06!important;white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+  .brand-sub,.branch-kicker,.study-platform,.study-brand-text{display:none!important;}
+
+  .branch-links,.study-links,.nav{
+    grid-column:1 / -1!important;grid-row:2!important;display:flex!important;align-items:center!important;
+    gap:8px!important;width:100%!important;max-width:100%!important;min-width:0!important;
+    overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important;
+    padding:2px 0 4px!important;margin:0!important;scroll-padding-inline:0!important;
+  }
+  .branch-links::-webkit-scrollbar,.study-links::-webkit-scrollbar,.nav::-webkit-scrollbar{display:none!important;}
+  .branch-link,.study-link,.nav-link,.study-nav-btn.hide{
+    flex:0 0 auto!important;min-width:max-content!important;height:46px!important;padding:0 15px!important;
+    border-radius:999px!important;font-size:clamp(.9rem,3.7vw,1.02rem)!important;line-height:1!important;
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;
+  }
+
+  /* Profile button: one fixed location inside the nav card, not part of the scroller. */
+  .branch-links > .profile-trigger,
+  .nav > .profile-trigger,
+  .topbar > .profile-trigger,
+  .study-nav-btn.profile-trigger,
+  #profileOpenBtn,#studyProfileBtn{
+    position:absolute!important;top:14px!important;right:14px!important;z-index:8!important;
+    width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;
+    padding:0!important;border-radius:999px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    overflow:hidden!important;transform:none!important;margin:0!important;
+  }
+  .profile-trigger > span:not(.profile-dot),.study-nav-btn.profile-trigger > span:not(.profile-dot),#profileOpenBtn > span:not(.profile-dot),#studyProfileBtn > span:not(.profile-dot){display:none!important;}
+  .profile-dot,#topProfileDot,#profileDot,#studyTopProfileDot{width:42px!important;height:42px!important;min-width:42px!important;border-radius:999px!important;overflow:hidden!important;font-size:0!important;}
+  .profile-dot img,#topProfileDot img,#profileDot img,#studyTopProfileDot img{width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;}
+  .study-nav-actions{display:contents!important;}
+  .study-nav-btn.hide{position:static!important;order:99!important;}
+}
+
+/* Very small phones: use a compact header and reduce oversized hero/card typography. */
+@media (max-width: 520px){
+  body{padding-left:12px!important;padding-right:12px!important;}
+  .topbar,.branch-nav,.study-nav{border-radius:24px!important;padding:12px!important;gap:10px!important;margin-top:10px!important;}
+  .brand-mark,.branch-mark,.study-mark{width:48px!important;height:48px!important;min-width:48px!important;border-radius:16px!important;}
+  .branch-links > .profile-trigger,.nav > .profile-trigger,.topbar > .profile-trigger,.study-nav-btn.profile-trigger,#profileOpenBtn,#studyProfileBtn{top:12px!important;right:12px!important;width:52px!important;height:52px!important;min-width:52px!important;max-width:52px!important;}
+  .profile-dot,#topProfileDot,#profileDot,#studyTopProfileDot{width:39px!important;height:39px!important;min-width:39px!important;}
+  .branch-link,.study-link,.nav-link,.study-nav-btn.hide{height:44px!important;padding:0 13px!important;font-size:.94rem!important;}
+
+  .main-title,.hero-title{font-size:clamp(3rem,17vw,4.4rem)!important;letter-spacing:-.07em!important;line-height:.92!important;}
+  .hero,.hero-card,.landing-hero{padding:24px!important;border-radius:28px!important;}
+  .hero-tagline,.hero-lead,.hero-copy{font-size:clamp(1.18rem,6vw,1.7rem)!important;line-height:1.35!important;}
+  .launch-row,.branch-grid,.cards-grid{grid-template-columns:1fr!important;gap:16px!important;}
+  .launch-card,.branch-card,.mode-card{min-height:auto!important;padding:22px!important;border-radius:26px!important;}
+  .launch-title,.branch-card h2,.mode-card h2{font-size:clamp(2rem,10vw,3rem)!important;line-height:1!important;}
+}
+
+/* Practice pages on phones: keep the trainer card usable and stop the modifier bar creating horizontal scroll. */
+@media (max-width: 760px){
+  .practice-card,.trainer-card,.game-card,.quiz-card,.main-card{
+    width:100%!important;max-width:100%!important;margin-left:auto!important;margin-right:auto!important;
+    padding:clamp(22px,6vw,34px)!important;border-radius:30px!important;min-height:auto!important;
+  }
+  .practice-card h1,.trainer-card h1,.game-card h1,.quiz-card h1,.main-card h1{
+    font-size:clamp(2.3rem,11vw,4rem)!important;line-height:1.02!important;
+  }
+  .score-row,.stats-row,.session-stats,.score-pills,.session-metrics{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;width:100%!important;max-width:100%!important;
+  }
+  .score-pill,.stat-pill,.metric-pill,.session-stat,.session-metric{
+    width:100%!important;min-width:0!important;height:auto!important;min-height:50px!important;padding:10px 12px!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;white-space:normal!important;line-height:1.15!important;
+  }
+  .kana-display,.prompt,.question,.kana-big{font-size:clamp(5rem,30vw,9rem)!important;line-height:1!important;}
+  input[type="text"],input[type="search"],textarea{font-size:16px!important;max-width:100%!important;}
+  .modifier-toggle,.modifiers-toggle,#modifierToggle,.modifiers-header{
+    width:100%!important;left:auto!important;right:auto!important;max-width:100%!important;overflow:hidden!important;
+  }
+  body{overflow-x:hidden!important;}
+}
+
+/* Results/stat pages: compact cards on phones so the first screen shows useful content. */
+@media (max-width: 760px){
+  .ma-compact-results,.ma-compact-insight-grid,.ma-kana-stat-grid,.stats-grid,.metric-grid,.results-grid{
+    grid-template-columns:1fr!important;gap:12px!important;
+  }
+  .ma-compact-results > *, .ma-compact-insight-grid > *, .ma-kana-stat, .stat-card, .metric-card{
+    min-height:auto!important;padding:18px!important;border-radius:24px!important;
+  }
+  .ma-compact-results .value,.stat-card .value,.metric-card .value{font-size:clamp(2.4rem,12vw,3.6rem)!important;line-height:1!important;}
+  .result-hero,.results-hero,.overall-snapshot,.snapshot-card{padding:22px!important;border-radius:28px!important;}
+}
+
+/* iPad portrait/tablet: avoid cramped nav while keeping desktop-style cards. */
+@media (min-width: 761px) and (max-width: 1024px) and (orientation: portrait){
+  body{padding-left:22px!important;padding-right:22px!important;}
+  .topbar,.branch-nav,.study-nav{width:100%!important;max-width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:14px!important;padding:16px!important;}
+  .branch-links,.study-links,.nav{width:100%!important;display:flex!important;overflow-x:auto!important;gap:10px!important;scrollbar-width:none!important;}
+  .branch-links::-webkit-scrollbar,.study-links::-webkit-scrollbar,.nav::-webkit-scrollbar{display:none!important;}
+  .branch-link,.study-link,.nav-link{flex:0 0 auto!important;}
+  .profile-trigger,.study-nav-btn.profile-trigger{margin-left:auto!important;}
+}
+
+
+/* === v2.9.4 desktop scroll restore ===
+   The mobile/iPad layout pass accidentally made some desktop pages behave like fixed viewports.
+   Keep horizontal overflow controlled, but always allow normal vertical page scrolling. */
+html, body {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-y: auto !important;
+}
+body {
+  position: relative !important;
+}
+.app-shell, .shell, .wrap, main, .page, .page-shell {
+  height: auto !important;
+  max-height: none !important;
+}
+@media (min-width: 761px) {
+  html, body {
+    overflow-y: auto !important;
+  }
+  .topbar, .branch-nav, .study-nav {
+    max-width: calc(100vw - 48px);
+  }
+}

@@ -1685,6 +1685,12 @@ body::before { pointer-events: none; }
 </style>
 <link rel="stylesheet" href="assets/mode-atlas-qol.css" />
 <script defer src="assets/mode-atlas-qol.js"></script>
+<style id="ma-scroll-restore-v294">
+html,body{height:auto!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:auto!important;}
+body{position:relative!important;}
+.app-shell,.shell,.wrap,main,.page,.page-shell{height:auto!important;max-height:none!important;}
+@media (min-width:761px){html,body{overflow-y:auto!important;}}
+</style>
 </head>
 <body><script id="modeAtlasEarlyLoaderWatchdog">
 (function(){
@@ -1884,7 +1890,7 @@ function updateTopProfileDot() {
 }
 
 try {
-  await import('./cloud-sync.js?v=2.9.2');
+  await import('./cloud-sync.js?v=2.9.4');
 
   if (window.KanaCloudSync) {
     window.KanaCloudSync.bindUi({
