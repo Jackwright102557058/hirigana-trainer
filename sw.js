@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mode-atlas-v2-8-7-session-local-only';
+const CACHE_NAME = 'mode-atlas-v2.9.0';
 const CORE = [
   './','index.html','kana.html','default.html','reverse.html','test.html','wordbank.html',
   'cloud-sync.js','firebase-config.js','site.webmanifest',

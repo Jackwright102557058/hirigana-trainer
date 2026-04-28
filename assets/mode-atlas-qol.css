@@ -1771,3 +1771,14 @@ html[data-ma-signed-in="false"] [data-ma-sign-in]{visibility:visible!important;p
   .study-nav{grid-template-columns:minmax(0,1fr) auto!important;}
   .profile-dot{width:32px!important;height:32px!important;min-width:32px!important;}
 }
+
+/* v2.8.9 loader safety: keep the branded loading screen, but never let a stale script trap the app forever. */
+#maLoadingScreen {
+  animation: maLoaderSafetyFade 0.25s ease 3.6s forwards;
+}
+#maLoadingScreen.done {
+  animation: none;
+}
+@keyframes maLoaderSafetyFade {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}

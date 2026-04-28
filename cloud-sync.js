@@ -394,6 +394,8 @@ const authReady = new Promise((resolve) => {
 });
 let hydratedForUserId = null;
 let syncTimeout = null;
+let sessionCloudPauseActive = false;
+let deferredSessionSync = false;
 let lastStatus = '';
 const uiBindings = new Set();
 const LAST_CLOUD_SYNC_KEY = 'modeAtlasLastCloudSyncAt';
@@ -641,7 +643,41 @@ async function signOutUser() {
   hydratedForUserId = null;
 }
 
+function isSessionCloudPaused() {
+  return sessionCloudPauseActive === true || window.ModeAtlasSessionCloudPause === true;
+}
+
+function setSessionCloudPause(active) {
+  sessionCloudPauseActive = !!active;
+  window.ModeAtlasSessionCloudPause = !!active;
+  if (active) {
+    window.ModeAtlasDeferredCloudSync = !!deferredSessionSync;
+    return;
+  }
+  if (deferredSessionSync) {
+    const shouldFlush = deferredSessionSync;
+    deferredSessionSync = false;
+    window.ModeAtlasDeferredCloudSync = false;
+    if (shouldFlush) scheduleSync(650);
+  }
+}
+
+function flushDeferredSessionSync(delay = 650) {
+  sessionCloudPauseActive = false;
+  window.ModeAtlasSessionCloudPause = false;
+  const shouldFlush = deferredSessionSync;
+  deferredSessionSync = false;
+  window.ModeAtlasDeferredCloudSync = false;
+  if (shouldFlush) scheduleSync(delay);
+  return shouldFlush;
+}
+
 async function syncNow() {
+  if (isSessionCloudPaused()) {
+    deferredSessionSync = true;
+    window.ModeAtlasDeferredCloudSync = true;
+    return false;
+  }
   await authReady;
   if (!CONFIG_READY || !currentUser || !db) return false;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -683,6 +719,11 @@ async function syncNow() {
 
 
 function scheduleSync(delay = 800) {
+  if (isSessionCloudPaused()) {
+    deferredSessionSync = true;
+    window.ModeAtlasDeferredCloudSync = true;
+    return false;
+  }
   clearTimeout(syncTimeout);
   syncTimeout = setTimeout(() => {
     syncNow().catch((error) => {
@@ -690,6 +731,7 @@ function scheduleSync(delay = 800) {
       setCloudState(false, error?.message || 'Cloud sync failed');
     });
   }, delay);
+  return true;
 }
 
 function markSectionUpdated(sectionName) {
@@ -849,6 +891,8 @@ window.KanaCloudSync = {
   signOut: signOutUser,
   scheduleSync,
   syncNow,
+  setSessionCloudPause,
+  flushDeferredSessionSync,
   markSectionUpdated,
   beginLocalImport,
   getUser,

@@ -2205,7 +2205,14 @@ body::before { pointer-events: none; }
 <link rel="stylesheet" href="assets/mode-atlas-qol.css" />
 <script defer src="assets/mode-atlas-qol.js"></script>
 </head>
-<body class="ma-reading-page"><div class="ma-loading-screen" id="maLoadingScreen" aria-live="polite"><div class="ma-loading-card"><div class="ma-loading-head"><div class="ma-loading-mark">学</div><div><div class="ma-loading-title">Mode Atlas</div><div class="ma-loading-sub">Preparing your study space…</div></div></div><div class="ma-skeleton"></div><div class="ma-skeleton"></div><div class="ma-skeleton short"></div></div></div>
+<body class="ma-reading-page"><script id="modeAtlasEarlyLoaderWatchdog">
+(function(){
+  function hide(){var el=document.getElementById('maLoadingScreen');if(el){el.classList.add('done');setTimeout(function(){try{el.remove();}catch(e){}},450);}}
+  window.ModeAtlasHideLoader=hide;
+  setTimeout(hide,2600);
+  window.addEventListener('load',function(){setTimeout(hide,500);});
+})();
+</script><div class="ma-loading-screen" id="maLoadingScreen" aria-live="polite"><div class="ma-loading-card"><div class="ma-loading-head"><div class="ma-loading-mark">学</div><div><div class="ma-loading-title">Mode Atlas</div><div class="ma-loading-sub">Preparing your study space…</div></div></div><div class="ma-skeleton"></div><div class="ma-skeleton"></div><div class="ma-skeleton short"></div></div></div>
 
 
 <nav class="study-nav" id="studyNav" aria-label="Study navigation">
@@ -2470,7 +2477,7 @@ body::before { pointer-events: none; }
 
 <script src="firebase-config.js"></script>
 <script type="module">
-import "./cloud-sync.js?v=rev-data-drawer-20260425";
+import "./cloud-sync.js?v=2.9.0";
 
 function updateStudyTopProfileDot() {
     const dot = document.getElementById('studyTopProfileDot');
@@ -2890,24 +2897,7 @@ function saveAll() {
     localStorage.setItem("scoreHistory", JSON.stringify(scoreHistory));
     localStorage.setItem("dailyChallengeHistory", JSON.stringify(dailyChallengeHistory));
     localStorage.setItem("highScore", String(highScore));
-    if (sessionStarted) {
-        try { localStorage.setItem("modeAtlasPendingSessionCloudSync", "reading"); } catch (e) {}
-    } else {
-        window.KanaCloudSync?.scheduleSync();
-    }
-}
-
-function flushPendingSessionCloudSync() {
-    let shouldSync = false;
-    try {
-        shouldSync = localStorage.getItem("modeAtlasPendingSessionCloudSync") === "reading" || localStorage.getItem("modeAtlasPendingSessionCloudSync") === "1";
-        if (shouldSync) localStorage.removeItem("modeAtlasPendingSessionCloudSync");
-    } catch (e) { shouldSync = true; }
-    if (shouldSync) {
-        setTimeout(function(){
-            try { window.KanaCloudSync?.scheduleSync?.(250); } catch (e) {}
-        }, 700);
-    }
+    window.KanaCloudSync?.scheduleSync();
 }
 
 function rebuildCharMap() {
@@ -3130,7 +3120,8 @@ function updateComboKanaBestScore() {
 }
 
 function endDailyChallenge() {
-    flushPendingSessionCloudSync();
+    window.KanaCloudSync?.setSessionCloudPause?.(false);
+    window.KanaCloudSync?.flushDeferredSessionSync?.(650);
     const dateKey = getTodayKey();
     const total = dailySequence.length || 20;
     const timeMs = Math.max(0, Date.now() - dailyStartTime);
@@ -3889,6 +3880,7 @@ function stopTrialTimer() {
 }
 
 function startSession() {
+    window.KanaCloudSync?.setSessionCloudPause?.(true);
     sessionStarted = true;
     sessionStats = createEmptySessionStats();
     sessionStats.active = true;
@@ -4266,7 +4258,8 @@ function saveTestModeResult() {
 }
 
 function endTestMode() {
-    flushPendingSessionCloudSync();
+    window.KanaCloudSync?.setSessionCloudPause?.(false);
+    window.KanaCloudSync?.flushDeferredSessionSync?.(650);
     const durationMs = Math.max(0, Date.now() - testStartTime);
     const totalAnswered = testCorrect + testWrong;
     const scorePct = totalAnswered ? Math.round((testCorrect / totalAnswered) * 100) : 0;
@@ -4447,9 +4440,10 @@ function showSessionModal(autoEnded = false) {
 }
 
 function endSession(autoEnded = false) {
-    flushPendingSessionCloudSync();
     hideComboTierNotice();
     if (!sessionStarted) return;
+    window.KanaCloudSync?.setSessionCloudPause?.(false);
+    window.KanaCloudSync?.flushDeferredSessionSync?.(650);
 
     if (isDailyChallengeSession()) {
         sessionStarted = false;

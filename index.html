@@ -1669,7 +1669,14 @@ body::before { pointer-events: none; }
 <link rel="stylesheet" href="assets/mode-atlas-qol.css" />
 <script defer src="assets/mode-atlas-qol.js"></script>
 </head>
-<body><div class="ma-loading-screen" id="maLoadingScreen" aria-live="polite"><div class="ma-loading-card"><div class="ma-loading-head"><div class="ma-loading-mark">学</div><div><div class="ma-loading-title">Mode Atlas</div><div class="ma-loading-sub">Preparing your study space…</div></div></div><div class="ma-skeleton"></div><div class="ma-skeleton"></div><div class="ma-skeleton short"></div></div></div>
+<body><script id="modeAtlasEarlyLoaderWatchdog">
+(function(){
+  function hide(){var el=document.getElementById('maLoadingScreen');if(el){el.classList.add('done');setTimeout(function(){try{el.remove();}catch(e){}},450);}}
+  window.ModeAtlasHideLoader=hide;
+  setTimeout(hide,2600);
+  window.addEventListener('load',function(){setTimeout(hide,500);});
+})();
+</script><div class="ma-loading-screen" id="maLoadingScreen" aria-live="polite"><div class="ma-loading-card"><div class="ma-loading-head"><div class="ma-loading-mark">学</div><div><div class="ma-loading-title">Mode Atlas</div><div class="ma-loading-sub">Preparing your study space…</div></div></div><div class="ma-skeleton"></div><div class="ma-skeleton"></div><div class="ma-skeleton short"></div></div></div>
 
   <header class="topbar">
     <a class="brand" href="index.html" aria-label="Mode Atlas home">
@@ -1846,7 +1853,7 @@ function updateTopProfileDot() {
 }
 
 try {
-  await import('./cloud-sync.js?v=cloud-data-drawer-repair-20260425');
+  await import('./cloud-sync.js?v=2.9.0');
 
   if (window.KanaCloudSync) {
     window.KanaCloudSync.bindUi({

@@ -2,7 +2,7 @@
   if (window.__modeAtlasQolLoaded) return;
   window.__modeAtlasQolLoaded = true;
 
-  const APP_VERSION = '2.8.7';
+  const APP_VERSION = '2.9.0';
   const THEME_KEY = 'modeAtlasThemePreference';
   const LAST_PAGE_KEY = 'modeAtlasLastKanaPage';
   const DEV_PIN = '3522';
@@ -55,21 +55,10 @@
   }
 
   function syncProfileAuthButtons(){
-    let user = null;
-    try { user = window.KanaCloudSync?.getUser?.() || null; } catch {}
-    const signedIn = !!user;
-    const signInSelectors = '#profileSignInBtn,#studyProfileSignIn,#identitySignInBtn,[data-ma-sign-in]';
-    const signOutSelectors = '#profileSignOutBtn,#studyProfileSignOut,#identitySignOutBtn,[data-ma-sign-out]';
-    $all(signInSelectors).forEach(btn=>{
-      btn.hidden = signedIn;
-      btn.style.display = signedIn ? 'none' : 'inline-flex';
-      btn.setAttribute('aria-hidden', signedIn ? 'true' : 'false');
-    });
-    $all(signOutSelectors).forEach(btn=>{
-      btn.hidden = !signedIn;
-      btn.style.display = signedIn ? 'inline-flex' : 'none';
-      btn.setAttribute('aria-hidden', signedIn ? 'false' : 'true');
-    });
+    if (window.ModeAtlas && typeof window.ModeAtlas.syncSingleAuthButton === 'function') {
+      window.ModeAtlas.syncSingleAuthButton();
+      return;
+    }
   }
   function enhanceProfileMenus(){
     $all('.profile-drawer,#profileDrawer,.profile-overlay aside,.drawer-panel').forEach(drawer=>{
