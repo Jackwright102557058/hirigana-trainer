@@ -33,7 +33,6 @@
 <link rel="stylesheet" href="../assets/css/mode-atlas-achievements.css" />
 <link rel="stylesheet" href="../assets/css/mode-atlas-theme.css" />
 <link rel="stylesheet" href="../assets/css/mode-atlas-responsive.css" />
-<link rel="stylesheet" href="../assets/css/mode-atlas-kana-dashboard.css" />
 <link rel="stylesheet" href="../assets/css/mode-atlas-kana-page.css">
 </head>
 <body><script src="../assets/app/mode-atlas-early-loader.js"></script><div class="ma-loading-screen" id="maLoadingScreen" aria-live="polite"><div class="ma-loading-card"><div class="ma-loading-head"><div class="ma-loading-mark">学</div><div><div class="ma-loading-title">Mode Atlas</div><div class="ma-loading-sub">Preparing your study space…</div></div></div><div class="ma-skeleton"></div><div class="ma-skeleton"></div><div class="ma-skeleton short"></div></div></div>
@@ -53,199 +52,59 @@
                 <a class="branch-link reading" href="../reading/">Reading</a>
                 <a class="branch-link writing" href="../writing/">Writing</a>
                 <a class="branch-link results" href="../results/">Results</a>
-                <button class="profile-trigger" id="profileOpenBtn" type="button" onclick="window.ModeAtlasKanaProfile && window.ModeAtlasKanaProfile.open()">
+                <button class="profile-trigger" id="profileOpenBtn" type="button">
                     <span class="profile-dot" id="topProfileDot">M</span>
                     <span>Profile</span>
                 </button>
             </div>
         </nav>
 
-    <section class="hero glass">
-        <div class="hero-grid">
-            <div>
-                <h1 class="main-title">Kana Trainer</h1>
-
-                <div class="hero-tagline">
-                    Sharpen recognition, strengthen recall, and keep your kana alive.
-                </div>
-                <div class="hero-copy hero-lead">
-                    Choose a practice lane, check the pulse of your progress, and jump back in without losing your rhythm.</div>
-
-                <div class="launch-row">
-                    <a class="launch-card reading" href="../reading/">
-                        <div class="launch-top">
-                            <div>
-                                <div class="launch-kicker">Reading Mode</div>
-                                <div class="launch-title">Reading Practice</div>
-                                <div class="launch-sub">See kana, type the matching romaji, and build speed with classic recognition drills.</div>
-                            </div>
-                            <div class="launch-badge">Launch</div>
-                        </div>
-                        <div class="launch-foot">
-                            <span>Fast recognition focus</span>
-                            <span class="launch-arrow">→</span>
-                        </div>
-                    </a>
-
-                    <a class="launch-card writing" href="../writing/">
-                        <div class="launch-top">
-                            <div>
-                                <div class="launch-kicker">Writing Mode</div>
-                                <div class="launch-title">Writing Practice</div>
-                                <div class="launch-sub">See romaji, choose the right kana, and reinforce recall with a more playful prompt style.</div>
-                            </div>
-                            <div class="launch-badge">Beta</div>
-                        </div>
-                        <div class="launch-foot">
-                            <span>Active recall focus</span>
-                            <span class="launch-arrow">→</span>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="footer-note kana-footer-note-left">Kana Trainer Home · v<span data-ma-app-version></span></div>
+    <section class="kana-hub-hero glass">
+        <div class="kana-hero-main">
+            <div class="hero-tagline">
+                <span>かな</span>
+                <span>Trainer hub</span>
             </div>
-
-            <div class="hero-side">
-                <div class="mini-panel">
-                    <div class="mini-label">Quick compare</div>
-                    <div class="duo-score">
-                        <div class="duo-chip">
-                            <div class="name">Reading High Score</div>
-                            <div class="value" id="heroReadingHigh">0</div>
-                        </div>
-                        <div class="duo-chip">
-                            <div class="name">Writing High Score</div>
-                            <div class="value" id="heroWritingHigh">0</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mini-panel">
-                    <div class="mini-label">Today’s status</div>
-                    <div class="hero-note" id="heroStatusText">No daily challenge data yet.</div>
-                </div>
-
-                <a class="launch-card results-launch-card" href="../results/">
-                    <div class="kana-inline-between">
-                        <span class="kana-strong-label">Test Results</span>
-                        <span class="kana-soft-label">→</span>
-                    </div>
+            <h1>Kana Trainer</h1>
+            <p class="kana-hero-lead">Build recognition, recall, speed, and mastery one focused session at a time.</p>
+            <div class="kana-hero-actions">
+                <a class="kana-primary-action" id="kanaContinueAction" href="../reading/">
+                    <span>Continue practice</span>
+                    <strong id="kanaContinueHint">Recommended next step</strong>
                 </a>
+                <div class="kana-hero-secondary-actions" aria-label="Kana hub shortcuts">
+                    <a class="kana-action reading" href="../reading/">Reading</a>
+                    <a class="kana-action writing" href="../writing/">Writing</a>
+                    <a class="kana-action results" href="../results/">Results</a>
+                </div>
             </div>
         </div>
+        <div class="kana-today-card" id="kanaTodayCard" aria-live="polite"></div>
     </section>
 
-    <div class="stage">
-        <section class="card glass">
-            <div class="card-head">
+    <main class="kana-hub" id="kanaHub">
+        <section class="kana-section kana-next-panel glass" id="kanaNextPanel"></section>
+
+        <section class="kana-section kana-mastery-panel glass">
+            <div class="kana-section-head">
                 <div>
-                    <h2 class="card-title">Mode spotlight</h2>
-                    <div class="card-sub">See where you're improving and which kana need more focus.</div>
+                    <span class="kana-section-kicker">Mastery overview</span>
+                    <h2>Kana mastery</h2>
+                    <p>Watch your kana move from first practice to confident recall.</p>
                 </div>
-                <div class="accent gold"></div>
-            </div>
-            <div class="spotlight-grid">
-                <div class="spotlight-panel">
-                    <div class="mode-tag reading">Reading Practice</div>
-                    <div class="hero-statline" id="readingSpotlightStats"></div>
-                    <div class="funline"><span>Toughest kana</span><strong id="readingToughest">—</strong></div>
-                    <div class="funline"><span>Strongest kana</span><strong id="readingStrongest">—</strong></div>
-                </div>
-                <div class="spotlight-panel">
-                    <div class="mode-tag writing">Writing Practice</div>
-                    <div class="hero-statline" id="writingSpotlightStats"></div>
-                    <div class="funline"><span>Toughest kana</span><strong id="writingToughest">—</strong></div>
-                    <div class="funline"><span>Strongest kana</span><strong id="writingStrongest">—</strong></div>
+                <div class="kana-head-actions">
+                    <button type="button" class="kana-ghost-action" data-ma-mastery-help>How mastery works</button>
+                    <button type="button" class="kana-map-action" data-ma-mastery-open>Open Mastery Map</button>
                 </div>
             </div>
+            <div class="kana-mastery-grid" id="kanaMasteryGrid"></div>
+            <div class="kana-mastery-focus" id="kanaMasteryFocus"></div>
         </section>
 
-        <section class="mid-band">
-            <div class="card glass">
-                <div class="card-head">
-                    <div>
-                        <h2 class="card-title">Performance gauges</h2>
-                        <div class="card-sub">Your overall accuracy and progress across both modes.</div>
-                    </div>
-                    <div class="accent gold"></div>
-                </div>
-                <div class="gauge-grid" id="gaugeGrid"></div>
-            </div>
+        <section class="kana-section kana-preset-panel glass" id="kanaPresetPanel"></section>
 
-            <div class="card glass">
-                <div class="card-head">
-                    <div>
-                        <h2 class="card-title">Best runs</h2>
-                        <div class="card-sub">Your best scores across each mode.</div>
-                    </div>
-                    <div class="accent gold"></div>
-                </div>
-                <div class="bars" id="recordsBars"></div>
-            </div>
-        </section>
-
-        <section class="footer-band">
-            <div class="card glass">
-                <div class="card-head">
-                    <div>
-                        <div class="comparison-title">Learning pulse</div>
-                        <h2 class="card-title kana-card-title-offset">Reading vs Writing progress</h2>
-                        <div class="card-sub">See how your reading and writing skills compare at a glance.</div>
-                    </div>
-                    <div class="accent gold"></div>
-                </div>
-
-                <div class="pulse-layout">
-                    <div class="pulse-top-grid">
-                        <div class="pulse-panel">
-                            <h3>Performance comparison</h3>
-                            <div class="pulse-compare" id="learningPulseCompare"></div>
-                        </div>
-
-                        <div class="pulse-panel">
-                            <h3>Where you're improving</h3>
-                            <div class="pulse-badges" id="learningPulseHighlights"></div>
-                        </div>
-                    </div>
-
-                    <div class="pulse-panel">
-                        <h3>Your progress summary</h3>
-                        <div class="pulse-key-grid" id="learningPulse"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="daily-zone">
-            <div class="card glass">
-                <div class="card-head">
-                    <div>
-                        <h2 class="card-title">Reading daily challenge</h2>
-                        <div class="card-sub">Complete today’s challenge and track your recent results.</div>
-                    </div>
-                    <div class="accent green"></div>
-                </div>
-                <div class="summary-rows" id="readingTodaySummary"></div>
-                <div class="ma-spacer-sm"></div>
-                <div class="timeline" id="readingTimeline"></div>
-            </div>
-
-            <div class="card glass">
-                <div class="card-head">
-                    <div>
-                        <h2 class="card-title">Writing daily challenge</h2>
-                    </div>
-                    <div class="accent blue"></div>
-                </div>
-                <div class="summary-rows" id="writingTodaySummary"></div>
-                <div class="ma-spacer-sm"></div>
-                <div class="timeline" id="writingTimeline"></div>
-            </div>
-        </section>
-    </div>
-
-    <div class="footer-note">Your home dashboard reads from the same local save data as Reading Practice and Writing Practice.</div>
+        <section class="kana-section kana-records-panel glass" id="kanaRecordsPanel"></section>
+    </main>
 </div>
 <script src="../assets/app/mode-atlas-toast.js"></script>
 <script src="../assets/app/mode-atlas-theme.js"></script>
@@ -268,7 +127,6 @@
 <script src="../assets/ui/mode-atlas-settings-menu.js"></script>
 <script src="../assets/ui/mode-atlas-profile-drawer-bindings.js"></script>
 <script src="../assets/pages/mode-atlas-kana-page.js"></script>
-<script src="../assets/pages/mode-atlas-kana-dashboard.js"></script>
 <script src="../assets/app/mode-atlas-confusable-mode.js"></script>
 <script src="../assets/ui/mode-atlas-verified-preset-confusable.js"></script>
 <script src="../assets/app/mode-atlas-sounds.js"></script>

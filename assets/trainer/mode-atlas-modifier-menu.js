@@ -10,9 +10,34 @@
   const SETTINGS_KEY = IS_WRITING ? 'reverseSettings' : 'settings';
   const $ = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
-  const readJSON = (k,f)=>{ try{ const raw=localStorage.getItem(k); return raw ? JSON.parse(raw) : f; } catch { return f; } };
-  const writeJSON = (k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  function storeGet(key, fallback = '') {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+  function storeSet(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  }
+  function storeRemove(key) {
+    const store = window.ModeAtlasStorage;
+    return store?.remove?.(key) ?? localStorage.removeItem(key);
+  }
+  const readJSON = (k,f)=>{ try{ return window.ModeAtlasStorage?.json?.(k, f) ?? JSON.parse(localStorage.getItem(k) || 'null') ?? f; } catch { return f; } };
+  const writeJSON = (k,v)=>{ try{ window.ModeAtlasStorage?.setJSON?.(k, v) ?? localStorage.setItem(k, JSON.stringify(v)); } catch {} };
   const now = ()=>Date.now();
+
+  function mmEl(tag, className='', text=''){
+    const el=document.createElement(tag);
+    if(className) el.className=className;
+    if(text!=='') el.textContent=String(text);
+    return el;
+  }
+  function mmLink(className='', text='', href=''){
+    const a=mmEl('a', className, text);
+    a.href=href;
+    return a;
+  }
+
 
   const HIRA = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん'.split('');
   const KATA = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフホマミムメモヤユヨラリルレロワヲン'.split('');
@@ -22,18 +47,8 @@
   const HIRA_ROWS = ['h_a','h_ka','h_sa','h_ta','h_na','h_ha','h_ma','h_ya','h_ra','h_wa'];
   const KATA_ROWS = ['k_a','k_ka','k_sa','k_ta','k_na','k_ha','k_ma','k_ya','k_ra','k_wa'];
 
-  function toast(message, type='info'){
-    try { if (window.ModeAtlas?.toast) return window.ModeAtlas.toast(message, type, 2800); } catch {}
-    let wrap = $('.ma-toast-wrap');
-    if (!wrap) { wrap = document.createElement('div'); wrap.className='ma-toast-wrap'; document.body.appendChild(wrap); }
-    const node = document.createElement('div');
-    node.className = 'ma-toast ' + type;
-    node.textContent = message;
-    wrap.appendChild(node);
-    setTimeout(()=>{ node.style.opacity='0'; setTimeout(()=>node.remove(),260); }, 2800);
-  }
 
-  function sectionTS(key){ try{ localStorage.setItem(key, String(now())); }catch{} }
+  function sectionTS(key){ try{ storeSet(key, String(now())); }catch{} }
   function trainerSettings(){
     let s = readJSON(SETTINGS_KEY, {});
     try { if (typeof settings === 'object' && settings) s = Object.assign({}, s, settings); } catch {}
@@ -77,7 +92,7 @@
       const branch = IS_WRITING ? 'writing' : 'reading';
       return window.ModeAtlasPresets?.activePresetFor?.(branch) || '';
     }catch{
-      return String(localStorage.getItem('modeAtlasActivePreset') || '').toLowerCase();
+      return String(storeGet('modeAtlasActivePreset', '') || '').toLowerCase();
     }
   }
   function presetList(){
@@ -95,7 +110,7 @@
     const b = makeBtn('', active, 'preset');
     b.classList.add('ma-preset-toggle');
     b.dataset.preset = id;
-    b.innerHTML = '<span>' + String(preset?.label || id) + '</span><small>' + String(preset?.desc || '') + '</small>';
+    b.replaceChildren(mmEl('span','',String(preset?.label || id)), mmEl('small','',String(preset?.desc || '')));
     return b;
   }
 
@@ -130,7 +145,7 @@
     } else {
       s[key] = !s[key];
     }
-    localStorage.removeItem('modeAtlasActivePreset');
+    storeRemove('modeAtlasActivePreset');
     persistTrainerSettings(s);
     refreshTrainer();
   }
@@ -156,7 +171,7 @@
           ['dakuten','Dakuten'], ['yoon','Yōon'], ['extendedKatakana','Extended Katakana']
         ]]
       ];
-      mod.innerHTML='';
+      mod.replaceChildren();
       mod.classList.add('ma-structured-modifiers');
       groups.forEach(([title,items])=>{
         const section=document.createElement('div');
@@ -206,17 +221,10 @@
   }
 
   function saveKeyStatsForPreset(){
-    // Track preset achievement from accumulated Reading + Writing character correctness.
-    const readingStats = readJSON('charStats',{});
-    const writingStats = readJSON('reverseCharStats',{});
-    const correctForChar = ch => Number((readingStats[ch]||{}).correct || (readingStats[ch]||{}).right || 0) + Number((writingStats[ch]||{}).correct || (writingStats[ch]||{}).right || 0);
-    const countFor = chars => chars.reduce((sum,ch)=>sum + correctForChar(ch), 0);
-    return {
-      starter: Math.min(100, countFor('あいうえお'.split(''))),
-      intermediate: Math.min(100, countFor(HIRA)),
-      advanced: Math.min(100, countFor([...HIRA,...KATA])),
-      pro: Math.min(100, countFor([...HIRA,...KATA, ...CONFUSABLE]))
-    };
+    // Preset achievements are tracked by the trainer controls only while that exact preset is active.
+    // Do not infer progress from broad kana stats because smaller presets overlap larger presets.
+    try { return window.ModeAtlasTrainerControls?.readPresetProgress?.() || readJSON('modeAtlasPresetAchievementProgress',{}); }
+    catch { return readJSON('modeAtlasPresetAchievementProgress',{}); }
   }
 
   function installPresetChecklist(){
@@ -236,24 +244,31 @@
       ['advanced','Advanced','Hiragana + Katakana + Dakuten'],
       ['pro','Pro','Everything enabled']
     ];
-    panel.innerHTML=`
-      <div class="ma-kana-pro-head">
-        <div>
-          <h2 class="ma-kana-pro-title">Preset achievements</h2>
-          <div class="ma-kana-pro-sub">Get 100 correct answers over time in each preset. Nothing is locked — this is just a progress tracker.</div>
-        </div>
-      </div>
-      <div class="ma-achievement-grid">
-        ${defs.map(([id,title,desc])=>{
-          const n=progress[id]||0; const done=n>=100;
-          return `<article class="ma-achievement-card ${done?'done':''}">
-            <div class="ma-achievement-top"><b>${title}</b><span>${n}/100</span></div>
-            <small>${desc}</small>
-            <div class="ma-progress-track"><span data-ma-progress="${Math.min(100,n)}"></span></div>
-            <em>${done?'Complete':'In progress'}</em>
-          </article>`;
-        }).join('')}
-      </div>`;
+
+    const head=mmEl('div','ma-kana-pro-head');
+    const copy=document.createElement('div');
+    copy.append(
+      mmEl('h2','ma-kana-pro-title','Preset achievements'),
+      mmEl('div','ma-kana-pro-sub','Get 100 correct answers over time in each preset. Nothing is locked — this is just a progress tracker.')
+    );
+    head.append(copy);
+
+    const grid=mmEl('div','ma-achievement-grid');
+    defs.forEach(([id,title,desc])=>{
+      const n=progress[id]||0;
+      const done=n>=100;
+      const card=mmEl('article',`ma-achievement-card ${done?'done':''}`);
+      const top=mmEl('div','ma-achievement-top');
+      top.append(mmEl('b','',title), mmEl('span','',`${n}/100`));
+      const track=mmEl('div','ma-progress-track');
+      const fill=document.createElement('span');
+      fill.dataset.maProgress=String(Math.min(100,n));
+      track.append(fill);
+      card.append(top, mmEl('small','',desc), track, mmEl('em','',done?'Complete':'In progress'));
+      grid.append(card);
+    });
+
+    panel.replaceChildren(head, grid);
     window.ModeAtlasUi?.applyProgressWidths?.(panel);
   }
 
@@ -268,10 +283,20 @@
         const box=document.createElement('section');
         box.id='maNoDataResults';
         box.className='ma-no-data-card';
-        box.innerHTML='<h2>No formal test results yet</h2><p>Complete a Reading or Writing Test Mode run to unlock detailed score cards, speed trends, and weak-kana breakdowns.</p><div class="ma-no-data-actions"><a href="/reading/">Start Reading Test</a><a href="/writing/">Start Writing Test</a></div>';
+        const actions=mmEl('div','ma-no-data-actions');
+        actions.append(mmLink('', 'Start Reading Test', '/reading/'), mmLink('', 'Start Writing Test', '/writing/'));
+        box.replaceChildren(
+          mmEl('h2','','No formal test results yet'),
+          mmEl('p','','Complete a Reading or Writing Test Mode run to unlock detailed score cards, speed trends, and weak-kana breakdowns.'),
+          actions
+        );
         target.parentNode.insertBefore(box, target);
       };
-      setTimeout(run,600); setTimeout(run,1800);
+      const scheduleNoDataRun = () => window.ModeAtlasLifecycle?.requestUiRefresh?.('no-data-state') ?? run();
+      document.addEventListener('ma:ui-refresh', run);
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
+      else run();
+      window.addEventListener('kanaCloudSyncStatusChanged', scheduleNoDataRun);
     }
     if(PAGE === 'kana.html'){
       const hasStats=Object.keys(readJSON('charStats',{})).length || Object.keys(readJSON('reverseCharStats',{})).length;
@@ -280,7 +305,10 @@
         const box=document.createElement('section');
         box.id='maNoDataKana';
         box.className='ma-no-data-card ma-no-data-kana';
-        box.innerHTML='<h2>Your Kana dashboard is ready</h2><p>Complete a few Reading or Writing sessions to fill this hub with streaks, mastery labels, speed goals, and review suggestions.</p>';
+        box.replaceChildren(
+          mmEl('h2','','Your Kana dashboard is ready'),
+          mmEl('p','','Complete a few Reading or Writing sessions to fill this hub with streaks, mastery labels, speed goals, and review suggestions.')
+        );
         main.appendChild(box);
       }
     }
@@ -307,16 +335,16 @@
             }
           }).catch(err=>{
             console.warn('Save import failed.', err);
-            toast('Import failed. Please use a valid Mode Atlas save file.', 'bad');
+            window.ModeAtlas?.toast?.('Import failed. Please use a valid Mode Atlas save file.', 'bad', 2800);
           });
         } else if(window.KanaCloudSync?.importLocalBackup){
           window.KanaCloudSync.importLocalBackup(payload).then(()=>location.reload()).catch(err=>{
             console.warn('Save import failed.', err);
-            toast('Import failed. Please use a valid Mode Atlas save file.', 'bad');
+            window.ModeAtlas?.toast?.('Import failed. Please use a valid Mode Atlas save file.', 'bad', 2800);
           });
         }
       }catch{
-        toast('Import failed. Make sure the JSON is valid.', 'bad');
+        window.ModeAtlas?.toast?.('Import failed. Make sure the JSON is valid.', 'bad', 2800);
       }
     }, true);
   }
@@ -330,5 +358,8 @@
     installImportPreview();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  window.addEventListener('pageshow', ()=>setTimeout(boot,100));
+  document.addEventListener('ma:preset-progress-updated', installPresetChecklist);
+  window.addEventListener('pageshow', boot);
+  document.addEventListener('ma:ui-refresh', boot);
+  document.addEventListener('ma:trainer-ready', boot);
 })();

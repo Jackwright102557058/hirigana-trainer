@@ -18,13 +18,13 @@ try{
 let settings = loadTrainerSettings("settings", DEFAULT_SETTINGS);
 
 normalizeLegacyRowSelection();
-let stats = loadJSON("charStats", {});
-let times = loadJSON("charTimes", {});
-let srs = loadJSON("charSrs", {});
+let stats = window.ModeAtlasStorage.readModeJSON("reading", "charStats", {});
+let times = window.ModeAtlasStorage.readModeJSON("reading", "charTimes", {});
+let srs = window.ModeAtlasStorage.readModeJSON("reading", "srs", {});
 
-let scoreHistory = normalizeScoreHistory(loadJSON("scoreHistory", createDefaultScoreHistory()));
-let dailyChallengeHistory = loadJSON("dailyChallengeHistory", {});
-let highScore = loadNumber("highScore", 0);
+let scoreHistory = normalizeScoreHistory(window.ModeAtlasStorage.readModeJSON("reading", "scoreHistory", createDefaultScoreHistory()));
+let dailyChallengeHistory = window.ModeAtlasStorage.readModeJSON("reading", "dailyHistory", {});
+let highScore = window.ModeAtlasStorage.readModeNumber("reading", "highScore", 0);
 
 let charMap = {};
 let activeChars = [];
@@ -119,24 +119,17 @@ const startWrap = document.getElementById("startWrap");
 const sessionActionsEl = document.getElementById("sessionActions");
 const endSessionBtn = document.getElementById("endSessionBtn");
 
-function setSessionActionsVisible(visible = true) {
-    if (!sessionActionsEl) return;
-    setElementVisible(sessionActionsEl, !!visible);
-    sessionActionsEl.classList.toggle("is-active", !!visible);
-    document.body.classList.toggle("trainer-session-active", !!visible);
-}
+const trainerUiVisibility = createTrainerUiVisibilityControls({
+    sessionActionsEl,
+    gameOverEl,
+    retryBtn
+});
 
-function setGameOverVisible(visible = true) {
-    if (!gameOverEl) return;
-    setElementVisible(gameOverEl, !!visible);
-    gameOverEl.classList.toggle("is-active", !!visible);
-}
-
-function setRetryButtonVisible(visible = true) {
-    if (!retryBtn) return;
-    setElementVisible(retryBtn, !!visible);
-    retryBtn.classList.toggle("is-active", !!visible);
-}
+const {
+    setSessionActionsVisible,
+    setGameOverVisible,
+    setRetryButtonVisible
+} = trainerUiVisibility;
 
 
 const exportBtn = document.getElementById("exportBtn");
@@ -162,12 +155,12 @@ const dailyTodayScoreEl = document.getElementById("dailyTodayScore");
 const dailyTodayAttemptsEl = document.getElementById("dailyTodayAttempts");
 const dailyHistoryListEl = document.getElementById("dailyHistoryList");
 const timeTrialTop3El = document.getElementById("timeTrialTop3");
+const speedRunTop3El = document.getElementById("speedRunTop3");
 
 function saveAll() {
     window.ModeAtlasTrainerCore.saveTrainerState({
-        prefix: "",
+        mode: "reading",
         section: "reading",
-        highScoreKey: "highScore",
         settings,
         stats,
         times,
@@ -398,6 +391,41 @@ function getDebugActiveChar() {
     return debugActiveChar || currentChar || activeChars[0] || null;
 }
 
+function debugEl(tag, className = "", text = "") {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== "") node.textContent = String(text);
+    return node;
+}
+
+function debugLine(label, value) {
+    const row = document.createElement("div");
+    const strong = document.createElement("strong");
+    strong.textContent = `${label}:`;
+    row.append(strong, document.createTextNode(" "));
+    if (value instanceof Node) row.append(value);
+    else row.append(debugEl("span", "srs-debug-muted", value));
+    return row;
+}
+
+function debugValueLine(label, value) {
+    const row = document.createElement("div");
+    row.append(document.createTextNode(`${label}: `), debugEl("strong", "", value));
+    return row;
+}
+
+function debugRow(label, value, className = "") {
+    const row = debugEl("div", className ? `srs-debug-row ${className}` : "srs-debug-row");
+    row.append(debugEl("span", "", label), debugEl("strong", "", value));
+    return row;
+}
+
+function debugCard(title, children = []) {
+    const card = debugEl("div", "srs-debug-card");
+    card.append(debugEl("div", "srs-debug-card-title", title), ...children);
+    return card;
+}
+
 function renderDebugPanel() {
     const activeChar = getDebugActiveChar();
     if (!activeChar) return null;
@@ -416,40 +444,47 @@ function renderDebugPanel() {
         document.body.appendChild(DEBUG_PANEL);
     }
 
-    DEBUG_PANEL.innerHTML = `
-        <div class="srs-debug-head">
-            <div class="srs-debug-title">SRS Debug</div>
-            <button type="button" id="closeSrsDebugBtn" class="srs-debug-close">✕</button>
-        </div>
-        <div class="srs-debug-grid">
-            <div><strong>Active kana:</strong> ${info.char} <span class="srs-debug-muted">(${info.romaji})</span></div>
-            <div><strong>Current shown:</strong> <span class="srs-debug-muted">${currentChar || '—'}</span></div>
-            <div><strong>Session state:</strong> <span class="srs-debug-muted">started=${sessionStarted} · locked=${locked} · activeChars=${activeChars.length}</span></div>
-            <div><strong>Settings:</strong> <span class="srs-debug-muted">focusWeak=${settings.focusWeak} · srs=${settings.srs} · dakuten=${settings.dakuten} · yoon=${settings.yoon} · extendedKatakana=${settings.extendedKatakana}</span></div>
-            <div class="srs-debug-card">
-                <div class="srs-debug-card-title">Weight breakdown</div>
-                ${Object.entries(info.parts).map(([k,v]) => `<div class="srs-debug-row"><span>${k}</span><strong>${v}</strong></div>`).join('')}
-                <div class="srs-debug-row srs-debug-total"><span>finalWeight</span><strong>${info.total}</strong></div>
-            </div>
-            <div class="srs-debug-card">
-                <div class="srs-debug-card-title">Kana save data</div>
-                <div>correct: <strong>${info.stats.correct}</strong></div>
-                <div>wrong: <strong>${info.stats.wrong}</strong></div>
-                <div>avgTime: <strong>${formatDuration(info.avgTime)}</strong></div>
-                <div>srs.level: <strong>${info.srs.level}</strong></div>
-                <div>due in: <strong>${info.dueInMs > 0 ? formatDuration(info.dueInMs) : 'due now'}</strong></div>
-                <div>lastSeen ago: <strong>${info.lastSeenAgoMs === null ? 'never' : formatDuration(info.lastSeenAgoMs)}</strong></div>
-                <div>lastWrong ago: <strong>${info.lastWrongAgoMs === null ? 'never' : formatDuration(info.lastWrongAgoMs)}</strong></div>
-            </div>
-            <div class="srs-debug-card">
-                <div class="srs-debug-card-title">Save snapshot</div>
-                <div>stats keys: <strong>${Object.keys(stats).length}</strong></div>
-                <div>times keys: <strong>${Object.keys(times).length}</strong></div>
-                <div>srs keys: <strong>${Object.keys(srs).length}</strong></div>
-                <div>highScore: <strong>${highScore}</strong></div>
-            </div>
-        </div>
-    `;
+    const head = debugEl("div", "srs-debug-head");
+    head.append(debugEl("div", "srs-debug-title", "SRS Debug"));
+    const close = debugEl("button", "srs-debug-close", "✕");
+    close.type = "button";
+    close.id = "closeSrsDebugBtn";
+    head.append(close);
+
+    const grid = debugEl("div", "srs-debug-grid");
+    const romaji = debugEl("span", "srs-debug-muted", `(${info.romaji})`);
+    const activeLine = document.createElement("div");
+    const activeLabel = document.createElement("strong");
+    activeLabel.textContent = "Active kana:";
+    activeLine.append(activeLabel, document.createTextNode(` ${info.char} `), romaji);
+
+    grid.append(
+        activeLine,
+        debugLine("Current shown", currentChar || '—'),
+        debugLine("Session state", `started=${sessionStarted} · locked=${locked} · activeChars=${activeChars.length}`),
+        debugLine("Settings", `focusWeak=${settings.focusWeak} · srs=${settings.srs} · dakuten=${settings.dakuten} · yoon=${settings.yoon} · extendedKatakana=${settings.extendedKatakana}`),
+        debugCard("Weight breakdown", [
+            ...Object.entries(info.parts).map(([k, v]) => debugRow(k, v)),
+            debugRow("finalWeight", info.total, "srs-debug-total")
+        ]),
+        debugCard("Kana save data", [
+            debugValueLine("correct", info.stats.correct),
+            debugValueLine("wrong", info.stats.wrong),
+            debugValueLine("avgTime", formatDuration(info.avgTime)),
+            debugValueLine("srs.level", info.srs.level),
+            debugValueLine("due in", info.dueInMs > 0 ? formatDuration(info.dueInMs) : "due now"),
+            debugValueLine("lastSeen ago", info.lastSeenAgoMs === null ? "never" : formatDuration(info.lastSeenAgoMs)),
+            debugValueLine("lastWrong ago", info.lastWrongAgoMs === null ? "never" : formatDuration(info.lastWrongAgoMs))
+        ]),
+        debugCard("Save snapshot", [
+            debugValueLine("stats keys", Object.keys(stats).length),
+            debugValueLine("times keys", Object.keys(times).length),
+            debugValueLine("srs keys", Object.keys(srs).length),
+            debugValueLine("highScore", highScore)
+        ])
+    );
+
+    DEBUG_PANEL.replaceChildren(head, grid);
     const closeBtn = document.getElementById('closeSrsDebugBtn');
     if (closeBtn) closeBtn.onclick = closeDebugPanel;
     return DEBUG_PANEL;
@@ -632,53 +667,62 @@ function nextCharacter() {
 }
 
 function startSession() {
-    window.KanaCloudSync?.setSessionCloudPause?.(true);
     sessionStarted = true;
-    sessionStats = createEmptySessionStats();
-    sessionStats.active = true;
-    sessionStats.startTime = Date.now();
 
-    streak = 0;
-    endlessRunTotal = 0;
-    endlessRunWrong = 0;
-    lastComboLength = getComboLength();
+    const prepared = prepareTrainerSessionStart({
+        isDailyChallengeSession,
+        isTestModeSession,
+        buildDailySequence,
+        buildTestSequence,
+        getComboLength
+    });
+
+    sessionStats = prepared.sessionStats;
+    streak = prepared.streak;
+    endlessRunTotal = prepared.endlessRunTotal;
+    endlessRunWrong = prepared.endlessRunWrong;
+    lastComboLength = prepared.lastComboLength;
     hideComboTierNotice();
 
-    if (isDailyChallengeSession()) {
-        dailySequence = buildDailySequence();
-        dailyIndex = 0;
-        dailyCorrect = 0;
-        dailyWrong = 0;
-        dailyStartTime = Date.now();
+    if (prepared.daily) {
+        dailySequence = prepared.daily.sequence;
+        dailyIndex = prepared.daily.index;
+        dailyCorrect = prepared.daily.correct;
+        dailyWrong = prepared.daily.wrong;
+        dailyStartTime = prepared.daily.startTime;
     }
 
-    if (isTestModeSession()) {
-        testSequence = buildTestSequence();
-        testIndex = 0;
-        testCorrect = 0;
-        testWrong = 0;
-        testStartTime = Date.now();
+    if (prepared.test) {
+        testSequence = prepared.test.sequence;
+        testIndex = prepared.test.index;
+        testCorrect = prepared.test.correct;
+        testWrong = prepared.test.wrong;
+        testStartTime = prepared.test.startTime;
     }
 
-    updateTopStats();
-    if (DEBUG_PANEL) renderDebugPanel();
-
-    setGameOverVisible(false);
-    gameOverTitleEl.textContent = "Wrong";
     locked = false;
-    setRetryButtonVisible(false);
-    setElementHidden(startWrap, true);
-    setSessionActionsVisible(true);
-    inputEl.disabled = false;
+    applyTrainerSessionStartUi({
+        debugPanel: DEBUG_PANEL,
+        gameOverTitleEl,
+        startWrap,
+        inputEl,
+        trialTimerPill,
+        settings,
+        isDailyChallengeSession,
+        setGameOverVisible,
+        setRetryButtonVisible,
+        setSessionActionsVisible,
+        updateTopStats,
+        renderDebugPanel
+    });
 
-    if (settings.timeTrial && !isDailyChallengeSession()) {
-        const timeMinutes = Math.max(0.1, Number(trialTimeEl.value) || 0.5);
-        trialTarget = Math.max(1, Number(trialTargetEl.value) || 20);
-        startTrialTimer(timeMinutes);
-    } else {
-        trialTarget = 0;
-        setElementHidden(trialTimerPill, true);
-    }
+    trialTarget = startTrainerTimedSession({
+        settings,
+        trialTimeEl,
+        trialTargetEl,
+        isDailyChallengeSession,
+        startTimedModeTimer
+    });
 
     onSettingsChanged();
 }
@@ -736,6 +780,7 @@ function handleCorrect() {
 
     sessionStats.answered += 1;
     sessionStats.correct += 1;
+    window.ModeAtlasTrainerControls?.recordPresetCorrect?.(1);
     sessionStats.timings.push(timeTaken);
     sessionStats.bestStreak = Math.max(sessionStats.bestStreak, streak);
     updateSessionChar(currentChar, true, timeTaken);
@@ -928,7 +973,7 @@ function endTestMode() {
     hiraganaEl.textContent = "—";
     currentChar = "";
 
-    sessionStatsGrid.innerHTML = window.ModeAtlasTrainerCore.renderStatCards([
+    window.ModeAtlasTrainerCore.renderStatCardsInto(sessionStatsGrid, [
         ["Score", `${scorePct}%`],
         ["Correct", testCorrect],
         ["Wrong", testWrong],
@@ -967,6 +1012,33 @@ function updateBestScores() {
         }
     }
 
+    if (settings.speedRun) {
+        const correct = Math.max(0, endlessRunTotal - endlessRunWrong);
+        const answered = Math.max(0, endlessRunTotal);
+        const wrong = Math.max(0, endlessRunWrong);
+        const durationMs = Math.max(1, (sessionStats.endTime || Date.now()) - (sessionStats.startTime || Date.now()));
+        const avgMs = sessionStats.timings.length ? Math.round(average(sessionStats.timings)) : 0;
+        const accuracy = answered ? correct / answered : 0;
+        const score = Math.max(0, Math.round((correct * 100) + (accuracy * 250) - (wrong * 50) - (avgMs / 20)));
+        const entry = {
+            durationSeconds: Math.round(durationMs / 1000),
+            answered,
+            correct,
+            wrong,
+            accuracy: Math.round(accuracy * 100),
+            avgMs,
+            score
+        };
+        scoreHistory.speedRunTop3.push(entry);
+        scoreHistory.speedRunTop3.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            if (b.correct !== a.correct) return b.correct - a.correct;
+            if (a.avgMs !== b.avgMs) return a.avgMs - b.avgMs;
+            return a.wrong - b.wrong;
+        });
+        scoreHistory.speedRunTop3 = scoreHistory.speedRunTop3.slice(0, 3);
+    }
+
     if (settings.timeTrial) {
         const timeVal = Number(trialTimeEl.value) || 0.5;
         const entry = {
@@ -991,88 +1063,60 @@ function updateBestScores() {
 }
 
 function showSessionModal(autoEnded = false) {
-    sessionStats.endTime = Date.now();
-
-    const total = sessionStats.answered;
-    const accuracy = total ? ((sessionStats.correct / total) * 100) : 0;
-    const avgTime = sessionStats.timings.length ? average(sessionStats.timings) : 0;
-    const fastest = sessionStats.timings.length ? Math.min(...sessionStats.timings) : 0;
-    const slowest = sessionStats.timings.length ? Math.max(...sessionStats.timings) : 0;
-    const durationMs = sessionStats.startTime ? (sessionStats.endTime - sessionStats.startTime) : 0;
-
-    const cards = [
-        ["Answered", total],
-        ["Right", sessionStats.correct],
-        ["Wrong", sessionStats.wrong],
-        ["Accuracy", `${accuracy.toFixed(1)}%`],
-        ["Best Streak", sessionStats.bestStreak],
-        ["Avg Time", formatDuration(avgTime)],
-        ["Fastest", formatDuration(fastest)],
-        ["Slowest", formatDuration(slowest)],
-        ["Session Time", formatDuration(durationMs)]
-    ];
-
-    if (settings.timeTrial) {
-        cards.push(["Target", trialTarget]);
-        cards.push(["Final Score", sessionStats.correct]);
-    }
-
-    sessionStatsGrid.innerHTML = cards.map(([label, value]) => `
-        <div class="stat-card">
-            <div class="label">${label}</div>
-            <div class="value">${value}</div>
-        </div>
-    `).join("");
-
-    const titleEl = sessionModalBackdrop.querySelector("h2");
-    titleEl.textContent = autoEnded ? "Time Trial Complete" : "Session Stats";
-
-    const { hardest, easiest } = getSessionDifficultyLists();
-    renderSessionList(sessionHardList, "Hardest This Session", hardest);
-    renderSessionList(sessionEasyList, "Strongest This Session", easiest);
-
-    sessionModalBackdrop.classList.add("open");
+    showTrainerSessionModal({
+        autoEnded,
+        sessionStats,
+        settings,
+        endlessRunTotal,
+        endlessRunWrong,
+        trialTarget,
+        sessionModalBackdrop,
+        sessionStatsGrid,
+        sessionHardList,
+        sessionEasyList
+    });
 }
 
 function endSession(autoEnded = false) {
-    hideComboTierNotice();
     if (!sessionStarted) return;
-    window.KanaCloudSync?.setSessionCloudPause?.(false);
-    window.KanaCloudSync?.flushDeferredSessionSync?.(650);
+    beginTrainerSessionEnd();
 
     if (isDailyChallengeSession()) {
         sessionStarted = false;
         sessionStats.active = false;
-        stopTrialTimer();
-        inputEl.disabled = true;
-        setGameOverVisible(false);
-        setSessionActionsVisible(false);
-        setElementVisible(startWrap, true);
-        clearHint();
-        hiraganaEl.textContent = "—";
-        currentChar = "";
-        updateTopStats();
-    if (DEBUG_PANEL) renderDebugPanel();
+        applyTrainerDailyStopUi({
+            inputEl,
+            startWrap,
+            promptEl: hiraganaEl,
+            stopTrialTimer,
+            setGameOverVisible,
+            setSessionActionsVisible,
+            updateTopStats,
+            renderDebugPanel,
+            debugPanel: DEBUG_PANEL,
+            afterPromptReset: () => { currentChar = ""; }
+        });
         onSettingsChanged();
         return;
     }
 
     sessionStarted = false;
-    sessionStats.active = false;
-    stopTrialTimer();
-    updateBestScores();
-
-    inputEl.disabled = true;
-    setGameOverVisible(false);
-    setSessionActionsVisible(false);
-    setElementVisible(startWrap, true);
-    clearHint();
-    hiraganaEl.textContent = "—";
-    currentChar = "";
-
-    showSessionModal(autoEnded);
-    updateTopStats();
-    if (DEBUG_PANEL) renderDebugPanel();
+    applyTrainerStandardSessionEnd({
+        sessionStats,
+        inputEl,
+        startWrap,
+        promptEl: hiraganaEl,
+        showSessionModal,
+        stopTrialTimer,
+        updateBestScores,
+        setGameOverVisible,
+        setSessionActionsVisible,
+        updateTopStats,
+        renderDebugPanel,
+        debugPanel: DEBUG_PANEL,
+        autoEnded,
+        afterPromptReset: () => { currentChar = ""; }
+    });
     onSettingsChanged();
 }
 
@@ -1279,14 +1323,14 @@ scoresHeaderEl.addEventListener("click", () => {
 
 function refreshSaveBackedStateFromCloud() {
     const preservedBottomTab = (settings && settings.activeBottomTab === "modifiers") || document.getElementById("modifiersContent")?.classList.contains("open") ? "modifiers" : null;
-    settings = { ...DEFAULT_SETTINGS, ...loadJSON("settings", DEFAULT_SETTINGS) };
+    settings = { ...DEFAULT_SETTINGS, ...window.ModeAtlasStorage.readModeJSON("reading", "settings", DEFAULT_SETTINGS) };
     settings.activeBottomTab = preservedBottomTab;
-    stats = loadJSON("charStats", {});
-    times = loadJSON("charTimes", {});
-    srs = loadJSON("charSrs", {});
-    scoreHistory = normalizeScoreHistory(loadJSON("scoreHistory", createDefaultScoreHistory()));
-    dailyChallengeHistory = loadJSON("dailyChallengeHistory", {});
-    highScore = loadNumber("highScore", 0);
+    stats = window.ModeAtlasStorage.readModeJSON("reading", "charStats", {});
+    times = window.ModeAtlasStorage.readModeJSON("reading", "charTimes", {});
+    srs = window.ModeAtlasStorage.readModeJSON("reading", "srs", {});
+    scoreHistory = normalizeScoreHistory(window.ModeAtlasStorage.readModeJSON("reading", "scoreHistory", createDefaultScoreHistory()));
+    dailyChallengeHistory = window.ModeAtlasStorage.readModeJSON("reading", "dailyHistory", {});
+    highScore = window.ModeAtlasStorage.readModeNumber("reading", "highScore", 0);
     if (!Array.isArray(settings.hiraganaRows)) settings.hiraganaRows = Object.keys(hiraganaRows);
     if (!Array.isArray(settings.katakanaRows)) settings.katakanaRows = [];
     if (!["same_row", "random"].includes(settings.comboMode)) settings.comboMode = "random";
@@ -1303,6 +1347,7 @@ function refreshSaveBackedStateFromCloud() {
     renderScoreHistory();
     if (!sessionStarted) showIdleState();
     if (DEBUG_PANEL) renderDebugPanel();
+    window.ModeAtlasLifecycle?.emit?.('trainer-ready', { page: window.ModeAtlasPageName?.() || '' });
 }
 
 window.refreshSaveBackedStateFromCloud = refreshSaveBackedStateFromCloud;
@@ -1344,11 +1389,9 @@ function hydrateAndRefreshTrainer() {
     }
 }
 window.addEventListener("focus", hydrateAndRefreshTrainer);
-window.addEventListener("pageshow", () => setTimeout(hydrateAndRefreshTrainer, 120));
-setTimeout(hydrateAndRefreshTrainer, 700);
-/* ModeAtlas trainer late cloud refresh repair */
-setTimeout(hydrateAndRefreshTrainer, 1500);
-setTimeout(hydrateAndRefreshTrainer, 3000);
-setTimeout(hydrateAndRefreshTrainer, 6000);
+window.addEventListener("pageshow", hydrateAndRefreshTrainer);
+window.addEventListener("kanaCloudSyncStatusChanged", hydrateAndRefreshTrainer);
+document.addEventListener("ma:ui-refresh", hydrateAndRefreshTrainer);
 
 init();
+hydrateAndRefreshTrainer();

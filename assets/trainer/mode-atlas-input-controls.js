@@ -68,8 +68,7 @@
       }
       if (typeof onSettingsChanged === 'function') onSettingsChanged();
       else sync();
-      setTimeout(sync, 0);
-      setTimeout(sync, 80);
+      window.ModeAtlasLifecycle?.requestUiRefresh?.('input-controls-changed');
     } catch (err) { console.warn('Mode Atlas input control click failed', err); }
   }
   function install(){
@@ -93,9 +92,10 @@
       applyPanelStates = wrapped;
     }
     sync();
-    setTimeout(sync, 300);
-    setTimeout(sync, 1200);
+    window.ModeAtlasLifecycle?.requestUiRefresh?.('input-controls-install');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
+  document.addEventListener('ma:ui-refresh', sync);
+  document.addEventListener('ma:trainer-ready', sync);
 })();

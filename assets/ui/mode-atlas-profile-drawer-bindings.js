@@ -7,9 +7,19 @@
   const appRoot = scriptEl && scriptEl.src ? new URL('../../', scriptEl.src) : new URL('./', location.href);
   const href = (path) => new URL(path, appRoot).href;
 
+  function storageGet(key, fallback = '') {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+
+  function storageSet(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  }
+
   function readJson(key, fallback){
     try {
-      const raw = localStorage.getItem(key);
+      const raw = storageGet(key, null);
       return raw ? JSON.parse(raw) : fallback;
     } catch {
       return fallback;
@@ -33,9 +43,6 @@
     return date.toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
   }
 
-  function escapeHtml(value){
-    return String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
-  }
 
   function removeStaticDrawers(){
     document.querySelectorAll('#profileDrawer,#profileBackdrop,#drawerBackdrop,#studyProfileOverlay,#settingsDrawer,#settingsBackdrop').forEach((node) => node.remove());
@@ -90,7 +97,15 @@
       button.setAttribute('aria-controls', 'settingsDrawer');
       button.setAttribute('aria-label', 'Open settings');
       button.title = 'Settings';
-      button.innerHTML = '<span class="ma-settings-icon" aria-hidden="true">⚙</span><span class="ma-settings-label">Settings</span>';
+      const icon = document.createElement('span');
+      icon.className = 'ma-settings-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '⚙';
+      const label = document.createElement('span');
+      label.className = 'ma-settings-label';
+      label.textContent = 'Settings';
+      button.replaceChildren(icon, label);
+      // Settings is inserted directly after Profile; CSS preserves this action order across nav variants.
       profileButton.insertAdjacentElement('afterend', button);
       profileButton.dataset.maSettingsNeighbor = '1';
     });
@@ -131,7 +146,7 @@
   function bindSettings(){
     const display = window.ModeAtlasDisplay;
     const normalize = (value) => display?.normalizeMode ? display.normalizeMode(value) : String(value || 'auto').toLowerCase();
-    const currentMode = () => display?.getMode ? display.getMode() : normalize(localStorage.getItem('modeAtlasDisplayMode') || 'auto');
+    const currentMode = () => display?.getMode ? display.getMode() : normalize(storageGet('modeAtlasDisplayMode', 'auto') || 'auto');
     const apply = () => {
       if (display?.applyMode) display.applyMode();
       else {
@@ -147,13 +162,15 @@
         const nextMode = normalize(button.dataset.display || 'auto');
         if (display?.setMode) display.setMode(nextMode);
         else {
-          localStorage.setItem('modeAtlasDisplayMode', nextMode);
+          storageSet('modeAtlasDisplayMode', nextMode);
           window.dispatchEvent(new CustomEvent('modeAtlasDisplayModeChanged', { detail: { mode: nextMode } }));
         }
         apply();
+        try { window.ModeAtlasTheme?.updateButtons?.(); } catch {}
       });
     });
     apply();
+    try { window.ModeAtlasTheme?.updateButtons?.(); } catch {}
   }
 
   function bindCloudUi(){
@@ -179,7 +196,12 @@
     const user = window.KanaCloudSync?.getUser?.();
     document.querySelectorAll('#topProfileDot,#studyTopProfileDot,#profileDot').forEach((dot) => {
       if (!dot) return;
-      if (user?.photoURL) dot.innerHTML = '<img src="' + escapeHtml(user.photoURL) + '" alt="" />';
+      if (user?.photoURL) {
+        const image = document.createElement('img');
+        image.src = user.photoURL;
+        image.alt = '';
+        dot.replaceChildren(image);
+      }
       else {
         const label = (user?.displayName || user?.email || 'M').trim();
         dot.textContent = (label[0] || 'M').toUpperCase();
@@ -188,7 +210,7 @@
   }
 
   function updateSyncStatus(){
-    const status = window.KanaCloudSync?.getSyncStatus?.() || { state:'local', tone:'neutral', text:'Progress saves on this device · sign in to sync', lastSync: Number(localStorage.getItem('modeAtlasLastCloudSyncAt') || 0), user: null };
+    const status = window.KanaCloudSync?.getSyncStatus?.() || { state:'local', tone:'neutral', text:'Progress saves on this device · sign in to sync', lastSync: Number(storageGet('modeAtlasLastCloudSyncAt', '0') || 0), user: null };
     const tone = status.tone || status.state || 'neutral';
     const summary = document.getElementById('profileSyncSummary');
     const detail = document.getElementById('profileSyncDetail');
@@ -196,7 +218,7 @@
     const dot = document.getElementById('profileSyncDot');
     if (summary) summary.textContent = status.text || 'Progress saves on this device';
     if (detail) detail.textContent = status.user ? 'Signed in with Google. Cloud sync updates automatically when progress changes.' : 'Not signed in. Your progress is saved locally on this device.';
-    if (meta) meta.textContent = 'Last cloud sync: ' + formatTime(status.lastSync || localStorage.getItem('modeAtlasLastCloudSyncAt'));
+    if (meta) meta.textContent = 'Last cloud sync: ' + formatTime(status.lastSync || storageGet('modeAtlasLastCloudSyncAt', '0'));
     if (dot) dot.className = 'ma-sync-dot ' + tone;
     updateProfileDot();
     const ach = document.getElementById('profileAchievementCount');
@@ -214,6 +236,7 @@
     document.body.insertAdjacentHTML('afterbegin', profileMarkup + settingsMarkup);
     bindOpenClose();
     bindSettings();
+    try { window.ModeAtlasTheme?.updateButtons?.(); } catch {}
     bindCloudUi();
     updateSyncStatus();
     try { window.ModeAtlasSounds?.refresh?.(); } catch {}

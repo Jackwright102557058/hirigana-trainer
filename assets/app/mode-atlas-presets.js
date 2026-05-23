@@ -8,6 +8,29 @@
   const SETTINGS_KEYS = { reading: 'settings', writing: 'reverseSettings' };
   const UPDATED_AT_KEYS = { reading: 'settingsUpdatedAt', writing: 'reverseSettingsUpdatedAt' };
 
+  function storeGet(key, fallback = '') {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+  function storeSet(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  }
+  function storeRemove(key) {
+    const store = window.ModeAtlasStorage;
+    return store?.remove?.(key) ?? localStorage.removeItem(key);
+  }
+  function storeJSON(key, fallback) {
+    const store = window.ModeAtlasStorage;
+    if (store?.json) return store.json(key, fallback);
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }
+  function storeSetJSON(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.setJSON?.(key, value) ?? localStorage.setItem(key, JSON.stringify(value));
+  }
+
   const PRESETS = Object.freeze({
     starter: Object.freeze({
       id: 'starter',
@@ -71,15 +94,14 @@
 
   function readJSON(key, fallback){
     try{
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
+      return storeJSON(key, fallback);
     }catch{
       return fallback;
     }
   }
 
   function writeJSON(key, value){
-    try{ localStorage.setItem(key, JSON.stringify(value)); }catch{}
+    try{ storeSetJSON(key, value); }catch{}
   }
 
   function clonePreset(id){
@@ -124,8 +146,8 @@
     if(!next) return null;
     writeJSON(settingsKey, next);
     const now = String(Date.now());
-    localStorage.setItem(UPDATED_AT_KEYS[branch] || 'settingsUpdatedAt', now);
-    if(branch === 'reading') localStorage.setItem('settingsUpdatedAt', now);
+    storeSet(UPDATED_AT_KEYS[branch] || 'settingsUpdatedAt', now);
+    if(branch === 'reading') storeSet('settingsUpdatedAt', now);
     try{ window.KanaCloudSync?.markSectionUpdated?.(branch); }catch{}
     return next;
   }
@@ -149,10 +171,10 @@
     const branches = target === 'reading' ? ['reading'] : target === 'writing' ? ['writing'] : ['reading','writing'];
     const written = {};
     branches.forEach(branch => { written[branch] = writeBranch(branch, id); });
-    localStorage.setItem('modeAtlasActivePreset', id);
-    localStorage.setItem('modeAtlasDefaultPreset', id);
-    localStorage.removeItem('modeAtlasConfusableMode');
-    if(opts.source === 'onboarding') localStorage.setItem('modeAtlasOnboardingPreset', id);
+    storeSet('modeAtlasActivePreset', id);
+    storeSet('modeAtlasDefaultPreset', id);
+    storeRemove('modeAtlasConfusableMode');
+    if(opts.source === 'onboarding') storeSet('modeAtlasOnboardingPreset', id);
     try{ window.KanaCloudSync?.scheduleSync?.(); }catch{}
     notifyPresetApplied(id, opts);
     try{
@@ -166,8 +188,8 @@
   function setDefault(id){
     id = normaliseId(id);
     if(!id) return false;
-    localStorage.setItem('modeAtlasDefaultPreset', id);
-    localStorage.setItem('modeAtlasActivePreset', id);
+    storeSet('modeAtlasDefaultPreset', id);
+    storeSet('modeAtlasActivePreset', id);
     return true;
   }
 
@@ -188,7 +210,7 @@
   }
 
   function activePresetFor(branch){
-    const stored = normaliseId(localStorage.getItem('modeAtlasActivePreset')) || normaliseId(localStorage.getItem('modeAtlasDefaultPreset'));
+    const stored = normaliseId(storeGet('modeAtlasActivePreset')) || normaliseId(storeGet('modeAtlasDefaultPreset'));
     const settings = readJSON(SETTINGS_KEYS[branch] || SETTINGS_KEYS.reading, {});
     if(stored && matchesSettings(settings, stored)) return stored;
     return Object.keys(PRESETS).find(id => matchesSettings(settings, id)) || '';

@@ -17,16 +17,18 @@
     const panel=document.createElement('section');
     panel.id='maCompactResultInsights';
     panel.className='ma-compact-results';
-    panel.innerHTML=`
-      <div class="ma-mini-result-card"><b>Reading accuracy</b><strong>${r.t?r.acc+'%':'—'}</strong><span>${r.t} answers</span></div>
-      <div class="ma-mini-result-card"><b>Writing accuracy</b><strong>${w.t?w.acc+'%':'—'}</strong><span>${w.t} answers</span></div>
-      <div class="ma-mini-result-card"><b>Average speed</b><strong>${avg?M.formatMs(avg):'—'}</strong><span>${avg&&avg<2000?'Next goal under 1.0s':'Goal under 2.0s'}</span></div>
-      <div class="ma-mini-result-card"><b>Slowest tracked</b><strong>${timed[0]?.ch||weak[0]?.ch||'—'}</strong><span>${timed[0]?M.formatMs(timed[0].avg):(weak.length?weak.map(x=>x.ch).join(' · '):'More data needed')}</span></div>
-      <div class="ma-mini-result-card"><b>Formal tests</b><strong>${formal}</strong><span>saved result cards</span></div>`;
+    panel.replaceChildren(
+      miniResultCard('Reading accuracy', r.t?r.acc+'%':'—', `${r.t} answers`),
+      miniResultCard('Writing accuracy', w.t?w.acc+'%':'—', `${w.t} answers`),
+      miniResultCard('Average speed', avg?M.formatMs(avg):'—', avg&&avg<2000?'Next goal under 1.0s':'Goal under 2.0s'),
+      miniResultCard('Slowest tracked', timed[0]?.ch||weak[0]?.ch||'—', timed[0]?M.formatMs(timed[0].avg):(weak.length?weak.map(x=>x.ch).join(' · '):'More data needed')),
+      miniResultCard('Formal tests', formal, 'saved result cards')
+    );
     const filter=$('#maResultFilterBar');
     if(filter) filter.insertAdjacentElement('afterend',panel);
     else ($('main,.shell,.app-shell')||document.body).prepend(panel);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',render); else render();
-  window.addEventListener('pageshow',()=>setTimeout(render,50));
+  window.addEventListener('pageshow',render);
+  document.addEventListener('ma:ui-refresh', render);
 })();

@@ -169,59 +169,81 @@ function getRowCellExtremes(result) {
     return map;
 }
 
-function renderRowPerformance(result, viewMode = "regular") {
+function makeResultNode(tag, className = "", text = "") {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== "") node.textContent = String(text);
+    return node;
+}
+
+function renderRowPerformanceNode(result, viewMode = "regular") {
     const groups = viewMode === "special" ? SPECIAL_ROW_GROUPS : REGULAR_ROW_GROUPS;
     const perf = computeRowPerformance(result, groups, viewMode === "special");
 
     const leftTitle = viewMode === "special" ? "Hiragana modifier rows" : "Hiragana rows";
     const rightTitle = viewMode === "special" ? "Katakana modifier rows" : "Katakana rows";
 
-    const renderSection = (title, rows, prefix, bestRow, worstRow) => `
-        <div class="row-performance-section">
-            <div class="row-performance-head">
-                <span>${title}</span>
-                <span class="results-hover-hint">Hover or click a row</span>
-            </div>
-            <div class="row-doughnut-strip">
-                ${rows.map((row, index) => {
-                    const badge = getRowBadgeType(row, bestRow, worstRow);
-                    return `
-                        <button
-                            class="row-doughnut-card ${badge ? badge.className : ""}"
-                            data-row-script="${row.script}"
-                            data-row-key="${row.key}"
-                            type="button"
-                        >
-                            ${badge ? `<span class="row-flag ${badge.className}">${badge.label}</span>` : ''}
-                            <canvas id="chart-${prefix}-${index}" width="70" height="70"></canvas>
-                            <div class="row-doughnut-label">${row.key}</div>
-                            <div class="row-doughnut-value">${row.isOff ? "Off" : `${row.accuracy}%`}</div>
-                        </button>
-                    `;
-                }).join("")}
-            </div>
-        </div>
-    `;
+    const renderSection = (title, rows, prefix, bestRow, worstRow) => {
+        const section = makeResultNode("div", "row-performance-section");
+        const head = makeResultNode("div", "row-performance-head");
+        head.append(makeResultNode("span", "", title), makeResultNode("span", "results-hover-hint", "Hover or click a row"));
 
-    return `
-        <div class="row-performance">
-            <div class="row-performance-toolbar">
-                <div class="row-view-toggle">
-                    <button class="row-view-btn ${viewMode === "regular" ? "active" : ""}" data-row-view="regular" type="button">Regular rows</button>
-                    <button class="row-view-btn ${viewMode === "special" ? "active" : ""}" data-row-view="special" type="button">Modifier rows</button>
-                </div>
-            </div>
-            <div class="row-tooltip-overlay" id="rowTooltipOverlay">
-                <div class="row-tooltip-card" id="rowTooltipCard">
-                    <div class="title">Row details</div>
-                    <div class="sub">Hover or click a row to see right vs wrong and average time.</div>
-                </div>
-            </div>
-            ${renderSection(leftTitle, perf.hiragana, viewMode === "special" ? "sh" : "h", perf.hiraganaBest, perf.hiraganaWorst)}
-            ${renderSection(rightTitle, perf.katakana, viewMode === "special" ? "sk" : "k", perf.katakanaBest, perf.katakanaWorst)}
-        </div>
-    `;
+        const strip = makeResultNode("div", "row-doughnut-strip");
+        rows.forEach((row, index) => {
+            const badge = getRowBadgeType(row, bestRow, worstRow);
+            const button = makeResultNode("button", `row-doughnut-card ${badge ? badge.className : ""}`.trim());
+            button.type = "button";
+            button.dataset.rowScript = row.script;
+            button.dataset.rowKey = row.key;
+
+            if (badge) button.append(makeResultNode("span", `row-flag ${badge.className}`, badge.label));
+
+            const canvas = document.createElement("canvas");
+            canvas.id = `chart-${prefix}-${index}`;
+            canvas.width = 70;
+            canvas.height = 70;
+
+            button.append(
+                canvas,
+                makeResultNode("div", "row-doughnut-label", row.key),
+                makeResultNode("div", "row-doughnut-value", row.isOff ? "Off" : `${row.accuracy}%`)
+            );
+            strip.append(button);
+        });
+
+        section.append(head, strip);
+        return section;
+    };
+
+    const root = makeResultNode("div", "row-performance");
+    const toolbar = makeResultNode("div", "row-performance-toolbar");
+    const toggle = makeResultNode("div", "row-view-toggle");
+    const regular = makeResultNode("button", `row-view-btn ${viewMode === "regular" ? "active" : ""}`.trim(), "Regular rows");
+    regular.type = "button";
+    regular.dataset.rowView = "regular";
+    const special = makeResultNode("button", `row-view-btn ${viewMode === "special" ? "active" : ""}`.trim(), "Modifier rows");
+    special.type = "button";
+    special.dataset.rowView = "special";
+    toggle.append(regular, special);
+    toolbar.append(toggle);
+
+    const overlay = makeResultNode("div", "row-tooltip-overlay");
+    overlay.id = "rowTooltipOverlay";
+    const card = makeResultNode("div", "row-tooltip-card");
+    card.id = "rowTooltipCard";
+    card.append(makeResultNode("div", "title", "Row details"), makeResultNode("div", "sub", "Hover or click a row to see right vs wrong and average time."));
+    overlay.append(card);
+
+    root.append(
+        toolbar,
+        overlay,
+        renderSection(leftTitle, perf.hiragana, viewMode === "special" ? "sh" : "h", perf.hiraganaBest, perf.hiraganaWorst),
+        renderSection(rightTitle, perf.katakana, viewMode === "special" ? "sk" : "k", perf.katakanaBest, perf.katakanaWorst)
+    );
+
+    return root;
 }
+
 
 const ALL_BASE_KANA = [
     ...Object.entries(HIRAGANA_ROWS).flatMap(([, row]) => Object.entries(row)),
@@ -392,7 +414,7 @@ function formatDuration(ms) {
     rowNeedsErrorStyling,
     getRowBadgeType,
     getRowCellExtremes,
-    renderRowPerformance,
+    renderRowPerformanceNode,
     formatDuration,
     normalizeTestResult,
     buildAverageResult

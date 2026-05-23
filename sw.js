@@ -1,6 +1,13 @@
 try { importScripts('./assets/app/mode-atlas-version.js'); } catch (e) {}
 const MODE_ATLAS_VERSION = self.ModeAtlasVersion || self.MODE_ATLAS_VERSION || 'dev-local';
-const CACHE_NAME = 'mode-atlas-' + MODE_ATLAS_VERSION;
+const MODE_ATLAS_CACHE_REVISION = self.ModeAtlasCacheRevision || self.MODE_ATLAS_CACHE_REVISION || ('assets-' + MODE_ATLAS_VERSION);
+const CACHE_PREFIX = 'mode-atlas';
+const CACHE_NAME = `${CACHE_PREFIX}-${MODE_ATLAS_CACHE_REVISION}`;
+const CACHE_META = Object.freeze({
+  appVersion: MODE_ATLAS_VERSION,
+  cacheRevision: MODE_ATLAS_CACHE_REVISION,
+  cacheName: CACHE_NAME
+});
 
 const CORE_ASSETS = [
   './',
@@ -20,7 +27,6 @@ const CORE_ASSETS = [
   './assets/app/mode-atlas-visit-flows.js',
   './assets/app/mode-atlas-loader.js',
   './assets/app/mode-atlas-kana-metrics.js',
-  './assets/pages/mode-atlas-kana-dashboard.js',
   './assets/results/mode-atlas-results-insights.js',
   './assets/app/mode-atlas-confusable-mode.js',
   './assets/app/mode-atlas-sounds.js',
@@ -36,7 +42,6 @@ const CORE_ASSETS = [
   './assets/css/mode-atlas-app-modals.css',
   './assets/css/mode-atlas-profile-settings.css',
   './assets/css/mode-atlas-responsive.css',
-  './assets/css/mode-atlas-kana-dashboard.css',
   './assets/css/mode-atlas-results-insights.css',
   './assets/css/mode-atlas-achievements.css',
   './assets/achievements/mode-atlas-achievements-ui.js',
@@ -118,7 +123,7 @@ self.addEventListener('activate', event => {
 
       await Promise.all(
         keys
-          .filter(k => k !== CACHE_NAME && /^mode-atlas-/i.test(k))
+          .filter(k => k !== CACHE_NAME && k.startsWith(`${CACHE_PREFIX}-`))
           .map(k => caches.delete(k))
       );
 
@@ -126,6 +131,39 @@ self.addEventListener('activate', event => {
     } catch (err) {}
   })());
 });
+
+
+async function clearModeAtlasCaches() {
+  const keys = await caches.keys();
+  await Promise.all(
+    keys
+      .filter(k => k.startsWith(`${CACHE_PREFIX}-`))
+      .map(k => caches.delete(k))
+  );
+}
+
+async function postToClients(message) {
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  clients.forEach(client => {
+    try { client.postMessage(message); } catch {}
+  });
+}
+
+self.addEventListener('message', event => {
+  const type = event?.data?.type;
+  if (type === 'MODE_ATLAS_GET_VERSION') {
+    event.source?.postMessage?.({ type: 'MODE_ATLAS_SW_VERSION', ...CACHE_META });
+    return;
+  }
+
+  if (type === 'MODE_ATLAS_CLEAR_CACHES') {
+    event.waitUntil((async () => {
+      await clearModeAtlasCaches();
+      await postToClients({ type: 'MODE_ATLAS_CACHES_CLEARED', ...CACHE_META });
+    })());
+  }
+});
+
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;

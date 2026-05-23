@@ -254,4 +254,9 @@ body.test-mode-active {
 
 
 .bottom-shell.ma-modifiers-only .toggle-btn.active,
-.bottom-shell.ma-modifiers-only .btn.active{background:linear-gradient(180deg, rgba(103,215,139,.24), rgba(103,215,139,.12)) !important;border-color:rgba(103,215,139,.72) !important;color:#d9ffe7 !important;box-shadow:inset 0 0 0 1px rgba(103,215,139,.22), 0 0 0 1px rgba(103,215,139,.14), 0 10px 24px rgba(103,215,139,.10) !important;}
+.bottom-shell.ma-modifiers-only .btn.active {
+    background: linear-gradient(180deg, rgba(103,215,139,.24), rgba(103,215,139,.12));
+    border-color: rgba(103,215,139,.72);
+    color: #d9ffe7;
+    box-shadow: inset 0 0 0 1px rgba(103,215,139,.22), 0 0 0 1px rgba(103,215,139,.14), 0 10px 24px rgba(103,215,139,.10);
+}

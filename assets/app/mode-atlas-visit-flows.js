@@ -2,19 +2,44 @@
 (function(){
   if(window.__modeAtlasVisitFlowsLoaded)return; window.__modeAtlasVisitFlowsLoaded=true;
   const K={first:'modeAtlasStarterSeen',return:'modeAtlasDailyReturnSeenDate',lastVisit:'modeAtlasLastVisitStudyDate',streak:'modeAtlasVisitStreak',lastStudied:'modeAtlasLastStudiedAt',lastMode:'modeAtlasLastMode',forceFirst:'modeAtlasForceFirstVisit',forceReturn:'modeAtlasForceDailyReturn'};
+  function storeGet(key, fallback='') {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+  function storeSet(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  }
+  function storeRemove(key) {
+    const store = window.ModeAtlasStorage;
+    return store?.remove?.(key) ?? localStorage.removeItem(key);
+  }
+  function storeJSON(key, fallback) {
+    const store = window.ModeAtlasStorage;
+    if (store?.json) return store.json(key, fallback);
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }
+  function storeSetJSON(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.setJSON?.(key, value) ?? localStorage.setItem(key, JSON.stringify(value));
+  }
   const page=()=>((window.ModeAtlasPageName ? window.ModeAtlasPageName() : (location.pathname.split('/').pop() || 'index.html')).toLowerCase()||'index.html');
-  const j=(k,f)=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):f}catch{return f}};
+  const j=(k,f)=>{try{return storeJSON(k,f)}catch{return f}};
   const hasObj=k=>{const v=j(k,null);return v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length>0};
   const hasArr=k=>Array.isArray(j(k,null))&&j(k,[]).length>0;
   const studyDate=(d=new Date())=>{const x=new Date(d);if(x.getHours()<4)x.setDate(x.getDate()-1);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`};
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function hasData(){return hasObj('charStats')||hasObj('reverseCharStats')||hasObj('scoreHistory')||hasObj('reverseScoreHistory')||hasArr('kanaWordBank')||hasArr('testModeResults')||hasArr('writingTestModeResults')||Number(localStorage.getItem('highScore')||0)>0||Number(localStorage.getItem('reverseHighScore')||0)>0}
+  function vEl(tag, className='', text=''){const el=document.createElement(tag);if(className)el.className=className;if(text!=='')el.textContent=String(text);return el}
+  function vBtn(className='', text=''){const btn=vEl('button',className,text);btn.type='button';return btn}
+  function vLink(className='', text='', href=''){const a=vEl('a',className,text);a.href=href;return a}
+  function hasData(){return hasObj('charStats')||hasObj('reverseCharStats')||hasObj('scoreHistory')||hasObj('reverseScoreHistory')||hasArr('kanaWordBank')||hasArr('testModeResults')||hasArr('writingTestModeResults')||Number(storeGet('highScore','0')||0)>0||Number(storeGet('reverseHighScore','0')||0)>0}
   function diff(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000)}
-  function streak(){const t=studyDate(),l=localStorage.getItem(K.lastVisit);let s=Number(localStorage.getItem(K.streak)||0);if(l!==t){s=(l&&diff(l,t)===1)?s+1:1;localStorage.setItem(K.lastVisit,t);localStorage.setItem(K.streak,String(s))}return s||1}
+  function streak(){const t=studyDate(),l=storeGet(K.lastVisit);let s=Number(storeGet(K.streak,'0')||0);if(l!==t){s=(l&&diff(l,t)===1)?s+1:1;storeSet(K.lastVisit,t);storeSet(K.streak,String(s))}return s||1}
   function ago(ts){ts=Number(ts||0);if(!ts)return'No study recorded yet';const m=Math.floor(Math.max(0,Date.now()-ts)/60000);if(m<1)return'Just now';if(m<60)return`${m}m ago`;const h=Math.floor(m/60);if(h<24)return`${h}h ago`;return`${Math.floor(h/24)}d ago`}
   function mode(kind){const s=j(kind==='writing'?'reverseSettings':'settings',{});if(s.testMode)return'Test Mode';if(s.dailyChallenge)return'Daily Challenge';if(s.comboKana)return'Combo Kana Mode';if(s.timeTrial)return'Time Trial Mode';if(s.endless)return'Endless Mode';if(s.focusWeak)return'Focus Weak';return'Standard Mode'}
-  function record(kind){const obj=kind==='writing'?{branch:'Kana Trainer',page:'Writing Practice',href:'reverse.html',mode:mode('writing')}:{branch:'Kana Trainer',page:'Reading Practice',href:'default.html',mode:mode('reading')};localStorage.setItem(K.lastStudied,String(Date.now()));localStorage.setItem(K.lastMode,JSON.stringify(obj))}
-  function track(){const p=page();if(p==='default.html'||p==='reverse.html'){const kind=p==='reverse.html'?'writing':'reading';document.addEventListener('click',e=>{if(e.target.closest('#startBtn,#endSessionBtn,#retryBtn,.choice-btn,#choiceGrid,.btn'))record(kind)},{passive:true});document.addEventListener('keydown',e=>{if(e.key==='Enter')record(kind)},{passive:true})}else if(p==='wordbank.html'){document.addEventListener('click',e=>{if(e.target.closest('#addWordBtn,[data-action="save"],[data-action="favorite"]')){localStorage.setItem(K.lastStudied,String(Date.now()));localStorage.setItem(K.lastMode,JSON.stringify({branch:'Word Bank',page:'Word Bank',href:'wordbank.html',mode:'Vocabulary Review'}))}},{passive:true})}}
+  function record(kind){const obj=kind==='writing'?{branch:'Kana Trainer',page:'Writing Practice',href:'reverse.html',mode:mode('writing')}:{branch:'Kana Trainer',page:'Reading Practice',href:'default.html',mode:mode('reading')};storeSet(K.lastStudied,String(Date.now()));storeSetJSON(K.lastMode,obj)}
+  function track(){const p=page();if(p==='default.html'||p==='reverse.html'){const kind=p==='reverse.html'?'writing':'reading';document.addEventListener('click',e=>{if(e.target.closest('#startBtn,#endSessionBtn,#retryBtn,.choice-btn,#choiceGrid,.btn'))record(kind)},{passive:true});document.addEventListener('keydown',e=>{if(e.key==='Enter')record(kind)},{passive:true})}else if(p==='wordbank.html'){document.addEventListener('click',e=>{if(e.target.closest('#addWordBtn,[data-action="save"],[data-action="favorite"]')){storeSet(K.lastStudied,String(Date.now()));storeSetJSON(K.lastMode,{branch:'Word Bank',page:'Word Bank',href:'wordbank.html',mode:'Vocabulary Review'})}},{passive:true})}}
   const ROWS=[['あ row','あいうえお'],['か row','かきくけこ'],['さ row','さしすせそ'],['た row','たちつてと'],['な row','なにぬねの'],['は row','はひふへほ'],['ま row','まみむめも'],['や row','やゆよ'],['ら row','らりるれろ'],['わ row','わをん'],['ア row','アイウエオ'],['カ row','カキクケコ'],['サ row','サシスセソ'],['タ row','タチツテト'],['ナ row','ナニヌネノ']];
   function suggestions(){const st=j('charStats',{}),tm=j('charTimes',{});const a=ROWS.map(([name,chars])=>{let c=0,w=0,ms=0,n=0;[...chars].forEach(ch=>{c+=Number(st[ch]?.correct||0);w+=Number(st[ch]?.wrong||0);if(tm[ch]?.avg&&tm[ch]?.count){ms+=tm[ch].avg*tm[ch].count;n+=tm[ch].count}});const total=c+w,acc=total?c/total:1;return{name,total,score:w*4+(1-acc)*50+Math.min((n?ms/n:0)/500,12)+(total?0:-100)}}).filter(r=>r.total>0).sort((a,b)=>b.score-a.score).slice(0,3);return a.length?a:[{name:'あ row'},{name:'か row'},{name:'さ row'}]}
   function name(){const u=window.KanaCloudSync?.getUser?.();const n=(u?.displayName||u?.email||'').trim();if(n)return n.split(/\s+/)[0].split('@')[0];for(const id of ['profileName','drawerName','studyProfileName','identityName']){const e=document.getElementById(id),t=(e?.textContent||'').trim();if(t&&!/guest/i.test(t))return t.split(/\s+/)[0]}return'there'}
@@ -41,12 +66,18 @@
     const m=document.createElement('div');
     m.id='maVisitModal';
     m.className='ma-visit-backdrop';
-    m.innerHTML='<div class="ma-visit-card" role="dialog" aria-modal="true"><div id="maVisitContent"></div></div>';
+    const card=vEl('div','ma-visit-card');
+    card.setAttribute('role','dialog');
+    card.setAttribute('aria-modal','true');
+    const content=document.createElement('div');
+    content.id='maVisitContent';
+    card.append(content);
+    m.append(card);
     document.body.appendChild(m);
     m.addEventListener('click',e=>{if(e.target===m)closeModal()});
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()})
   }
-  function closeModal(force){const modal=document.getElementById('maVisitModal'); if(!modal)return; if(modal.dataset.locked==='true' && force!==true)return; modal.classList.remove('open'); modal.dataset.locked='false'}
+  function closeModal(force){const modal=document.getElementById('maVisitModal'); if(!modal)return; if(modal.dataset.locked==='true' && force!==true)return; modal.classList.remove('open'); modal.dataset.locked='false'; try{document.dispatchEvent(new CustomEvent('ma:visit-flow-closed'))}catch{}}
   function first(){
     ensure();
     const c=document.getElementById('maVisitContent');
@@ -56,11 +87,55 @@
       ['advanced','Advanced','Hiragana, katakana, and dakuten.'],
       ['pro','Pro','Everything enabled, including yōon and extended katakana.']
     ];
-    c.innerHTML='<div class="ma-visit-kicker">Mode Atlas setup</div><h2 class="ma-visit-title">Welcome to Mode Atlas</h2><p class="ma-visit-copy">Choose a starting preset for Mode Atlas. This sets your first study session layout for all our branches and can be changed or customised later. We will also send you to Kana Trainer - Reading mode to get you started.</p><div class="ma-visit-panel"><div class="ma-visit-label">Study presets</div><div class="ma-visit-presets">'+presets.map(p=>'<button class="ma-visit-preset" type="button" data-ma-onboarding-preset="'+esc(p[0])+'" aria-pressed="false"><span>'+esc(p[1])+'</span><small>'+esc(p[2])+'</small></button>').join('')+'</div></div><div class="ma-visit-legal"><div class="ma-visit-legal-links"><a href="'+esc(legalUrl('privacy'))+'" target="_blank" rel="noopener">Privacy Policy</a><a href="'+esc(legalUrl('terms'))+'" target="_blank" rel="noopener">Terms of Use</a><span class="ma-visit-link-note">These open in a new tab so setup stays open.</span></div><label class="ma-visit-check"><input type="checkbox" data-legal-agree><span>I agree to the Privacy Policy and Terms of Use.</span></label></div><div class="ma-visit-error" data-setup-error>Please choose a preset and agree before beginning.</div><div class="ma-visit-actions"><button class="ma-visit-btn primary" type="button" data-begin disabled aria-disabled="true">Begin!</button></div>';
+
+    c.replaceChildren();
+    c.append(
+      vEl('div','ma-visit-kicker','Mode Atlas setup'),
+      vEl('h2','ma-visit-title','Welcome to Mode Atlas'),
+      vEl('p','ma-visit-copy','Choose a starting preset for Mode Atlas. This sets your first study session layout for all our branches and can be changed or customised later. We will also send you to Kana Trainer - Reading mode to get you started.')
+    );
+
+    const panel=vEl('div','ma-visit-panel');
+    panel.append(vEl('div','ma-visit-label','Study presets'));
+    const presetGrid=vEl('div','ma-visit-presets');
+    presets.forEach(preset=>{
+      const btn=vBtn('ma-visit-preset');
+      btn.dataset.maOnboardingPreset=preset[0];
+      btn.setAttribute('aria-pressed','false');
+      btn.append(vEl('span','',preset[1]), vEl('small','',preset[2]));
+      presetGrid.append(btn);
+    });
+    panel.append(presetGrid);
+
+    const legal=vEl('div','ma-visit-legal');
+    const links=vEl('div','ma-visit-legal-links');
+    const privacy=vLink('', 'Privacy Policy', legalUrl('privacy'));
+    privacy.target='_blank'; privacy.rel='noopener';
+    const terms=vLink('', 'Terms of Use', legalUrl('terms'));
+    terms.target='_blank'; terms.rel='noopener';
+    links.append(privacy, terms, vEl('span','ma-visit-link-note','These open in a new tab so setup stays open.'));
+
+    const label=vEl('label','ma-visit-check');
+    const agreeInput=document.createElement('input');
+    agreeInput.type='checkbox';
+    agreeInput.dataset.legalAgree='';
+    label.append(agreeInput, vEl('span','','I agree to the Privacy Policy and Terms of Use.'));
+    legal.append(links,label);
+
+    const err=vEl('div','ma-visit-error','Please choose a preset and agree before beginning.');
+    err.dataset.setupError='';
+
+    const actions=vEl('div','ma-visit-actions');
+    const begin=vBtn('ma-visit-btn primary','Begin!');
+    begin.dataset.begin='';
+    begin.disabled=true;
+    begin.setAttribute('aria-disabled','true');
+    actions.append(begin);
+
+    c.append(panel, legal, err, actions);
+
     let selected='';
-    const begin=c.querySelector('[data-begin]');
     const agree=c.querySelector('[data-legal-agree]');
-    const err=c.querySelector('[data-setup-error]');
     function setSelected(btn){
       selected=btn?.getAttribute('data-ma-onboarding-preset')||'';
       c.querySelectorAll('[data-ma-onboarding-preset]').forEach(b=>{
@@ -88,11 +163,13 @@
       if(begin.disabled){err.classList.add('show');return;}
       const applied = window.ModeAtlasPresets?.apply?.(selected, { target: 'both', source: 'onboarding' });
       if(!applied){err.classList.add('show');return;}
-      localStorage.setItem(K.first,'true');
-      localStorage.setItem('modeAtlasOnboardingComplete','true');
-      localStorage.setItem('modeAtlasLegalAccepted','true');
-      localStorage.setItem('modeAtlasLegalAcceptedAt',String(Date.now()));
-      localStorage.setItem('modeAtlasLegalVersion','2026-05');
+      storeSet(K.first,'true');
+      storeSet('modeAtlasOnboardingComplete','true');
+      storeSet('modeAtlasLegalAccepted','true');
+      storeSet('modeAtlasLegalAcceptedAt',String(Date.now()));
+      storeSet('modeAtlasLegalVersion','2026-05');
+      storeSet(K.return, studyDate());
+      storeSet(K.lastVisit, studyDate());
       sessionStorage.setItem('modeAtlasShowWhatsNewAfterOnboarding','1');
       closeModal(true);
       location.href=appUrl('reading/');
@@ -102,13 +179,93 @@
     modal.classList.add('open');
     refresh();
   }
-  function ret(){ensure();localStorage.setItem(K.return,studyDate());const lm=j(K.lastMode,{page:'Reading Practice',mode:'Endless Mode',href:'default.html'}),s=suggestions(),st=streak();const c=document.getElementById('maVisitContent');c.innerHTML=`<div class="ma-visit-kicker">Daily return</div><h2 class="ma-visit-title">Welcome back, ${esc(name())}</h2><p class="ma-visit-copy">Last studied: <strong>${esc(ago(localStorage.getItem(K.lastStudied)))}</strong><br>Current streak: <strong>${st} day${st===1?'':'s'}</strong></p><div class="ma-visit-panel"><div class="ma-visit-label">Suggested review</div><div class="ma-visit-list">${s.map(r=>`<span class="ma-visit-chip">${esc(r.name)}</span>`).join('')}</div></div><div class="ma-visit-panel"><div class="ma-visit-label">Resume</div><div class="ma-visit-list"><span class="ma-visit-chip">${esc(lm.page||'Reading Practice')} · ${esc(lm.mode||'Endless Mode')}</span></div></div><div class="ma-visit-actions"><a class="ma-visit-btn primary" href="${esc(lm.href||'default.html')}">Resume</a><button class="ma-visit-btn" type="button" data-close>Not now</button></div>`;c.querySelector('[data-close]').onclick=closeModal;document.getElementById('maVisitModal').classList.add('open')}
-  function maybe(){if(page()!=='index.html')return;const q=new URLSearchParams(location.search),ff=sessionStorage.getItem(K.forceFirst)==='1'||q.has('devFirstVisit')||q.has('setup'),fr=sessionStorage.getItem(K.forceReturn)==='1'||q.has('devReturn');sessionStorage.removeItem(K.forceFirst);sessionStorage.removeItem(K.forceReturn);localStorage.removeItem(K.forceFirst);localStorage.removeItem(K.forceReturn);setTimeout(async()=>{try{if(window.KanaCloudSync?.ready)await Promise.race([window.KanaCloudSync.ready,new Promise(r=>setTimeout(r,900))])}catch{}if(ff)return first();if(fr)return ret();const nd=!hasData();if(nd&&localStorage.getItem(K.first)!=='true')return first();if(!nd){const t=studyDate();if(localStorage.getItem(K.return)!==t)return ret();streak()}},650)}
-  function triggerFirst(){localStorage.removeItem(K.forceFirst);sessionStorage.removeItem(K.forceFirst);if(page()==='index.html')first();else{sessionStorage.setItem(K.forceFirst,'1');location.href='/?devFirstVisit=1'}}
-  function triggerReturn(){localStorage.removeItem(K.forceReturn);sessionStorage.removeItem(K.forceReturn);if(page()==='index.html')ret();else{sessionStorage.setItem(K.forceReturn,'1');location.href='/?devReturn=1'}}
-  function reset(){[K.first,K.return,K.forceFirst,K.forceReturn,K.lastVisit,K.streak].forEach(k=>localStorage.removeItem(k));console.info('Mode Atlas visit flags reset')}
+  function ret(){
+    ensure();
+    storeSet(K.return,studyDate());
+    const lm=j(K.lastMode,{page:'Reading Practice',mode:'Endless Mode',href:'default.html'}),s=suggestions(),st=streak();
+    const c=document.getElementById('maVisitContent');
+    c.replaceChildren(
+      vEl('div','ma-visit-kicker','Daily return'),
+      vEl('h2','ma-visit-title',`Welcome back, ${name()}`)
+    );
+
+    const copy=vEl('p','ma-visit-copy');
+    copy.append(
+      document.createTextNode('Last studied: '),
+      vEl('strong','',ago(storeGet(K.lastStudied))),
+      document.createElement('br'),
+      document.createTextNode('Current streak: '),
+      vEl('strong','',`${st} day${st===1?'':'s'}`)
+    );
+
+    const reviewPanel=vEl('div','ma-visit-panel');
+    reviewPanel.append(vEl('div','ma-visit-label','Suggested review'));
+    const reviewList=vEl('div','ma-visit-list');
+    s.forEach(r=>reviewList.append(vEl('span','ma-visit-chip',r.name)));
+    reviewPanel.append(reviewList);
+
+    const resumePanel=vEl('div','ma-visit-panel');
+    resumePanel.append(vEl('div','ma-visit-label','Resume'));
+    const resumeList=vEl('div','ma-visit-list');
+    resumeList.append(vEl('span','ma-visit-chip',`${lm.page||'Reading Practice'} · ${lm.mode||'Endless Mode'}`));
+    resumePanel.append(resumeList);
+
+    const actions=vEl('div','ma-visit-actions');
+    actions.append(vLink('ma-visit-btn primary','Resume',lm.href||'default.html'));
+    const close=vBtn('ma-visit-btn','Not now');
+    close.dataset.close='';
+    actions.append(close);
+
+    c.append(copy,reviewPanel,resumePanel,actions);
+    close.addEventListener('click',()=>closeModal());
+    document.getElementById('maVisitModal').classList.add('open');
+  }
+  let visitDecisionMade=false;
+  async function maybe(){
+    if(page()!=='index.html'||visitDecisionMade)return;
+    const q=new URLSearchParams(location.search),ff=sessionStorage.getItem(K.forceFirst)==='1'||q.has('devFirstVisit')||q.has('setup'),fr=sessionStorage.getItem(K.forceReturn)==='1'||q.has('devReturn');
+    sessionStorage.removeItem(K.forceFirst);sessionStorage.removeItem(K.forceReturn);storeRemove(K.forceFirst);storeRemove(K.forceReturn);
+    try{if(window.KanaCloudSync?.beforePageLoad)await window.KanaCloudSync.beforePageLoad();else if(window.KanaCloudSync?.ready)await window.KanaCloudSync.ready}catch{}
+    if(visitDecisionMade)return;
+    if(ff){visitDecisionMade=true;return first();}
+    if(fr){visitDecisionMade=true;return ret();}
+    const nd=!hasData();
+    if(nd&&storeGet(K.first)!=='true'){visitDecisionMade=true;return first();}
+    if(!nd){
+      const t=studyDate();
+      if(storeGet(K.return)!==t){visitDecisionMade=true;return ret();}
+      streak();
+    }
+  }
+  function triggerFirst(){storeRemove(K.forceFirst);sessionStorage.removeItem(K.forceFirst);if(page()==='index.html')first();else{sessionStorage.setItem(K.forceFirst,'1');location.href='/?devFirstVisit=1'}}
+  function triggerReturn(){storeRemove(K.forceReturn);sessionStorage.removeItem(K.forceReturn);if(page()==='index.html')ret();else{sessionStorage.setItem(K.forceReturn,'1');location.href='/?devReturn=1'}}
+  function reset(){[K.first,K.return,K.forceFirst,K.forceReturn,K.lastVisit,K.streak].forEach(k=>storeRemove(k));console.info('Mode Atlas visit flags reset')}
   window.modeAtlasTriggerFirstVisit=triggerFirst;window.modeAtlasTriggerDailyReturn=triggerReturn;window.modeAtlasResetVisitFlags=reset;
-  function addDev(){const p=document.getElementById('maDevPanel');if(!p||p.querySelector('[data-visit-tools]'))return;const card=p.querySelector('.ma-dev-card')||p,row=document.createElement('div');row.className='ma-dev-row';row.dataset.visitTools='true';row.innerHTML='<div class="ma-dev-label">Visit flows</div><div class="ma-dev-actions"><button class="ma-dev-btn" type="button" data-first>Trigger first visit</button><button class="ma-dev-btn" type="button" data-return>Trigger daily return</button><button class="ma-dev-btn" type="button" data-reset>Reset visit flags</button></div>';row.onclick=e=>{if(e.target.closest('[data-first]'))triggerFirst();if(e.target.closest('[data-return]'))triggerReturn();if(e.target.closest('[data-reset]'))reset()};card.appendChild(row)}
-  function bindDevVisitTools(){if(!window.ModeAtlasEnv?.allowDevTools)return;const o=window.dev;if(typeof o==='function'&&!o.__visitToolsBound){const p=function(){const r=o.apply(this,arguments);setTimeout(addDev,0);return r};p.__visitToolsBound=true;window.dev=p;window.atlasDev=p}new MutationObserver(addDev).observe(document.documentElement,{childList:true,subtree:true});setTimeout(addDev,500)}
-  function init(){track();maybe();bindDevVisitTools()} if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+  function addDev(){
+    const p=document.getElementById('maDevPanel');
+    if(!p||p.querySelector('[data-visit-tools]'))return;
+    const card=p.querySelector('.ma-dev-card')||p,row=document.createElement('div');
+    row.className='ma-dev-row';
+    row.dataset.visitTools='true';
+
+    row.append(vEl('div','ma-dev-label','Visit flows'));
+    const actions=vEl('div','ma-dev-actions');
+    const firstBtn=vBtn('ma-dev-btn','Trigger first visit');
+    firstBtn.dataset.first='';
+    const returnBtn=vBtn('ma-dev-btn','Trigger daily return');
+    returnBtn.dataset.return='';
+    const resetBtn=vBtn('ma-dev-btn','Reset visit flags');
+    resetBtn.dataset.reset='';
+    actions.append(firstBtn,returnBtn,resetBtn);
+    row.append(actions);
+
+    row.onclick=e=>{
+      if(e.target.closest('[data-first]'))triggerFirst();
+      if(e.target.closest('[data-return]'))triggerReturn();
+      if(e.target.closest('[data-reset]'))reset()
+    };
+    card.appendChild(row)
+  }
+  function bindDevVisitTools(){if(!window.ModeAtlasEnv?.allowDevTools)return;const o=window.dev;if(typeof o==='function'&&!o.__visitToolsBound){const p=function(){const r=o.apply(this,arguments);addDev();return r};p.__visitToolsBound=true;window.dev=p;window.atlasDev=p}new MutationObserver(addDev).observe(document.documentElement,{childList:true,subtree:true});addDev()}
+  function init(){track();maybe();bindDevVisitTools();window.addEventListener('kanaCloudSyncStatusChanged',maybe);document.addEventListener('ma:ui-refresh',maybe)} if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

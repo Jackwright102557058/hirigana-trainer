@@ -3,13 +3,31 @@
   if (window.__modeAtlasSaveRepairLoaded) return;
   window.__modeAtlasSaveRepairLoaded = true;
 
+  const Store = window.ModeAtlasStorage;
+  const K = Store?.KEYS || {};
+
+  function storeGet(key, fallback){
+    return Store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+
+  function storeSet(key, value){
+    return Store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  }
+
   function readJSON(key, fallback){
-    try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+    try {
+      if (Store?.json) return Store.json(key, fallback);
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    }
     catch(e) { return fallback; }
   }
 
   function writeJSON(key, value){
-    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    try {
+      Store?.setJSON?.(key, value) ?? localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    }
     catch(e) { return false; }
   }
 
@@ -47,15 +65,15 @@
     var changed = 0;
     var map = {
       settingsUpdatedAt: ['settings','reverseSettings','modeAtlasThemePreference','modeAtlasDisplayMode'],
-      resultsUpdatedAt: ['testModeResults','readingTestModeResults','writingTestModeResults','kanaTrainerReadingTestModeResults','kanaTrainerWritingTestModeResults','charStats','reverseCharStats','charTimes','reverseCharTimes'],
+      resultsUpdatedAt: [K.readingTestResults||'testModeResults',K.readingTestResultsBackup||'readingTestModeResults',K.writingTestResults||'writingTestModeResults','kanaTrainerReadingTestModeResults','kanaTrainerWritingTestModeResults',K.readingCharStats||'charStats',K.writingCharStats||'reverseCharStats',K.readingCharTimes||'charTimes',K.writingCharTimes||'reverseCharTimes'],
       srsUpdatedAt: ['charSrs','reverseCharSrs'],
-      dailyUpdatedAt: ['dailyChallengeHistory','reverseDailyChallengeHistory'],
+      dailyUpdatedAt: [K.readingDailyHistory||'dailyChallengeHistory',K.writingDailyHistory||'reverseDailyChallengeHistory'],
       profileUpdatedAt: ['modeAtlasLastCloudSyncAt','modeAtlasLastUserId']
     };
     Object.keys(map).forEach(function(tsKey){
-      if (localStorage.getItem(tsKey)) return;
-      var hasData = map[tsKey].some(function(key){ return localStorage.getItem(key) !== null; });
-      if (hasData) { localStorage.setItem(tsKey, String(now)); changed += 1; }
+      if (storeGet(tsKey, '')) return;
+      var hasData = map[tsKey].some(function(key){ return storeGet(key, null) !== null; });
+      if (hasData) { storeSet(tsKey, String(now)); changed += 1; }
     });
     return changed;
   }
@@ -64,11 +82,11 @@
     var result = repairSaveData();
     var timestampChanges = ensureSectionTimestamps();
     var meta = {
-      settingsUpdatedAt: Number(localStorage.getItem('settingsUpdatedAt') || 0),
-      resultsUpdatedAt: Number(localStorage.getItem('resultsUpdatedAt') || 0),
-      srsUpdatedAt: Number(localStorage.getItem('srsUpdatedAt') || 0),
-      dailyUpdatedAt: Number(localStorage.getItem('dailyUpdatedAt') || 0),
-      profileUpdatedAt: Number(localStorage.getItem('profileUpdatedAt') || 0)
+      settingsUpdatedAt: Number(storeGet('settingsUpdatedAt', '0') || 0),
+      resultsUpdatedAt: Number(storeGet('resultsUpdatedAt', '0') || 0),
+      srsUpdatedAt: Number(storeGet('srsUpdatedAt', '0') || 0),
+      dailyUpdatedAt: Number(storeGet('dailyUpdatedAt', '0') || 0),
+      profileUpdatedAt: Number(storeGet('profileUpdatedAt', '0') || 0)
     };
     try { window.dispatchEvent(new CustomEvent('modeAtlasDataModelRepaired', { detail: meta })); } catch(e) {}
     return {
@@ -88,8 +106,8 @@
       'kanaTrainerWritingTestModeResults'
     ].forEach(function(key){ changed += dedupeArrayKey(key); });
 
-    if (!localStorage.getItem('modeAtlasDataVersion')) {
-      localStorage.setItem('modeAtlasDataVersion', String((window.ModeAtlasEnv && window.ModeAtlasEnv.appVersion) || window.ModeAtlasVersion || 'dev-local'));
+    if (!storeGet('modeAtlasDataVersion', '')) {
+      storeSet('modeAtlasDataVersion', String((window.ModeAtlasEnv && window.ModeAtlasEnv.appVersion) || window.ModeAtlasVersion || 'dev-local'));
       changed += 1;
     }
 
@@ -116,5 +134,6 @@
   function boot(){ repairDataModel(); bindRepairButtons(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
-  window.addEventListener('pageshow', function(){ setTimeout(bindRepairButtons, 50); });
+  window.addEventListener('pageshow', bindRepairButtons);
+  document.addEventListener('ma:ui-refresh', bindRepairButtons);
 })();

@@ -1,3 +1,4 @@
+/* Mode Atlas early loader. Owns loading-screen hide timing. */
 (function(){
   var hidden = false;
   function hide(){
@@ -10,6 +11,7 @@
     }
   }
   window.ModeAtlasHideLoader=hide;
+  window.ModeAtlasLoaderState={ hide: hide, isHidden: function(){ return hidden; } };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function(){ setTimeout(hide, 120); }, {once:true});
   } else {

@@ -5,12 +5,16 @@
 
   const APP_VERSION = (window.ModeAtlasEnv && window.ModeAtlasEnv.appVersion) || window.ModeAtlasVersion || 'dev-local';
   const SAVE_SCHEMA_VERSION = '3';
-  const BUILD_LABEL = 'Professional Polish Update';
-  const BUILD_DATE = '2026-05-01';
+  const BUILD_LABEL = 'Kana Button Graph Size Fix';
+  const BUILD_DATE = '2026-05-17';
   const DEVELOPER = 'Jack Wright';
   const SUPPORT_EMAIL = 'support@mode-atlas.com';
   const OFFICIAL_SITE = 'mode-atlas.app';
   const PAGE = (window.ModeAtlasPageName ? window.ModeAtlasPageName() : (location.pathname.split('/').pop() || 'index.html')).toLowerCase();
+  const WHATS_NEW_TITLE = 'What’s new';
+  const WHATS_NEW_COPY = 'Mode Atlas has a new polish update focused on cleaner menus, safer save handling, and clearer account information.';
+  const WHATS_NEW_SEEN_CONTENT_KEY = 'maWhatsNewSeenContentSignature';
+  const WHATS_NEW_SEEN_AT_KEY = 'maWhatsNewSeenAt';
   const whatsNewItems = [
     'Cleaner menus and shared Profile / Settings controls.',
     'Improved save import summaries and safer backup handling.',
@@ -18,8 +22,41 @@
     'Light Mode contrast and layout polish.'
   ];
 
+  function storeGet(key, fallback = '') {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+  function storeSet(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  }
   function $(sel, root = document){ return root.querySelector(sel); }
   function $all(sel, root = document){ return Array.from(root.querySelectorAll(sel)); }
+  function aboutEl(tag, className = '', text = ''){
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== '') el.textContent = String(text);
+    return el;
+  }
+  function aboutButton(text, attrs = {}){
+    const button = aboutEl('button', attrs.className || '', text);
+    button.type = 'button';
+    Object.entries(attrs).forEach(([key, value]) => {
+      if (key === 'className') return;
+      if (key.startsWith('data')) button.dataset[key.slice(4,5).toLowerCase() + key.slice(5)] = value;
+      else button.setAttribute(key, value);
+    });
+    return button;
+  }
+  function aboutLink(text, href, attrs = {}){
+    const link = aboutEl('a', attrs.className || '', text);
+    link.href = href;
+    Object.entries(attrs).forEach(([key, value]) => {
+      if (key === 'className') return;
+      link.setAttribute(key, value);
+    });
+    return link;
+  }
   function fmtDate(ts){
     const n = Number(ts || 0);
     if (!Number.isFinite(n) || !n) return 'Never';
@@ -42,7 +79,7 @@
   function latestTimestamp(keys){
     let best = 0;
     keys.forEach(key => {
-      const n = Number(localStorage.getItem(key) || 0);
+      const n = Number(storeGet(key, '0') || 0);
       if (Number.isFinite(n) && n > best) best = n;
     });
     return best;
@@ -51,9 +88,9 @@
     const user = window.KanaCloudSync?.getUser?.() || window.currentUser || null;
     const signedIn = !!user;
     const online = navigator.onLine !== false;
-    const lastSync = latestTimestamp([
-      'modeAtlasLastCloudSyncAt','modeAtlasLastSyncCheck','cloudReadingUpdatedAt','cloudWritingUpdatedAt','testModeResultsUpdatedAt','readingTestModeResultsUpdatedAt','writingTestModeResultsUpdatedAt','kanaWordBankUpdatedAt'
-    ]);
+    const lastSync = signedIn ? latestTimestamp([
+      'modeAtlasLastCloudSyncAt','cloudReadingUpdatedAt','cloudWritingUpdatedAt','testModeResultsUpdatedAt','readingTestModeResultsUpdatedAt','writingTestModeResultsUpdatedAt','kanaWordBankUpdatedAt'
+    ]) : 0;
     let mode = 'Local only';
     let status = 'Local saving active';
     if (signedIn && online){ mode = 'Cloud + local'; status = 'Cloud available'; }
@@ -65,33 +102,43 @@
     return {
       version: APP_VERSION,
       saveSchema: SAVE_SCHEMA_VERSION,
+      cacheRevision: window.ModeAtlasCacheRevision || 'unknown',
       build: BUILD_LABEL,
       buildDate: BUILD_DATE,
       page: (location.pathname.split('/').pop() || 'index.html'),
-      theme: localStorage.getItem('modeAtlasThemePreference') || 'system',
+      theme: storeGet('modeAtlasThemePreference', 'system') || 'system',
       saveMode: cloud.mode,
       cloudStatus: cloud.status,
       signedIn: cloud.signedIn ? 'Yes' : 'No',
       online: cloud.online ? 'Yes' : 'No',
-      lastCloudSync: fmtDate(cloud.lastSync),
-      localSaveUpdated: fmtDate(latestTimestamp(['settingsUpdatedAt','resultsUpdatedAt','srsUpdatedAt','dailyUpdatedAt','profileUpdatedAt','modeAtlasLastSyncCheck','kanaWordBankUpdatedAt'])),
+      lastCloudSync: cloud.signedIn ? fmtDate(cloud.lastSync) : 'Not signed in',
+      localSaveUpdated: fmtDate(latestTimestamp(['settingsUpdatedAt','resultsUpdatedAt','srsUpdatedAt','dailyUpdatedAt','profileUpdatedAt','kanaWordBankUpdatedAt'])),
       installSupport: window.ModeAtlasInstall ? 'Available' : 'Not available here',
       supportEmail: SUPPORT_EMAIL,
-      storage: (() => { try { localStorage.setItem('__ma_probe','1'); localStorage.removeItem('__ma_probe'); return 'Available'; } catch { return 'Blocked'; } })()
+      storage: (() => { try { storeSet('__ma_probe','1'); window.ModeAtlasStorage?.remove?.('__ma_probe') ?? localStorage.removeItem('__ma_probe'); return 'Available'; } catch { return 'Blocked'; } })()
     };
   }
   function ensureWhatsNewModal(){
     let modal = $('#maWhatsNew');
     if (modal) return modal;
+
     modal = document.createElement('div');
     modal.id = 'maWhatsNew';
     modal.className = 'ma-whats-new-backdrop';
-    modal.innerHTML = `<div class="ma-whats-new-modal">
-      <h2>What’s new</h2>
-      <p>Mode Atlas has a new polish update focused on cleaner menus, safer save handling, and clearer account information.</p>
-      <ul>${whatsNewItems.map(item => `<li>${item}</li>`).join('')}</ul>
-      <button type="button" data-ma-whats-new-close>Done</button>
-    </div>`;
+
+    const panel = aboutEl('div', 'ma-whats-new-modal');
+    panel.append(
+      aboutEl('h2', '', WHATS_NEW_TITLE),
+      aboutEl('p', '', WHATS_NEW_COPY)
+    );
+
+    const list = document.createElement('ul');
+    whatsNewItems.forEach(item => list.append(aboutEl('li', '', item)));
+    const done = aboutButton('Done');
+    done.dataset.maWhatsNewClose = '';
+    panel.append(list, done);
+    modal.append(panel);
+
     document.body.appendChild(modal);
     modal.addEventListener('click', event => {
       if (event.target === modal || event.target.closest('[data-ma-whats-new-close]')) {
@@ -101,115 +148,227 @@
     });
     return modal;
   }
-  function whatsNewSignature(){ return APP_VERSION + '::' + whatsNewItems.join('|'); }
+  function whatsNewContentSignature(){
+    return [WHATS_NEW_TITLE, WHATS_NEW_COPY, ...whatsNewItems].join('|');
+  }
+  function legacyWhatsNewSignature(){
+    return APP_VERSION + '::' + whatsNewItems.join('|');
+  }
+  function legacySeenMatchesContent(){
+    const itemSignature = whatsNewItems.join('|');
+    const legacySignature = storeGet('maWhatsNewSeenSignature', '');
+    if (legacySignature && legacySignature.endsWith('::' + itemSignature)) return true;
+    return !!(storeGet('maWhatsNewSeenVersion', '') || storeGet('maWhatsNewSeen', ''));
+  }
   function markWhatsNewSeen(){
     try {
-      localStorage.setItem('maWhatsNewSeenVersion', APP_VERSION);
-      localStorage.setItem('maWhatsNewSeenSignature', whatsNewSignature());
-      localStorage.setItem('maWhatsNewSeen', APP_VERSION);
+      const signature = whatsNewContentSignature();
+      storeSet(WHATS_NEW_SEEN_CONTENT_KEY, signature);
+      storeSet(WHATS_NEW_SEEN_AT_KEY, String(Date.now()));
+      // Keep legacy keys updated for older builds/exports, but do not use app version as the main display rule.
+      storeSet('maWhatsNewSeenVersion', APP_VERSION);
+      storeSet('maWhatsNewSeenSignature', legacyWhatsNewSignature());
+      storeSet('maWhatsNewSeen', APP_VERSION);
     } catch {}
   }
   function shouldAutoShowWhatsNew(){
     try {
-      return localStorage.getItem('maWhatsNewSeenVersion') !== APP_VERSION || localStorage.getItem('maWhatsNewSeenSignature') !== whatsNewSignature();
+      const signature = whatsNewContentSignature();
+      if (storeGet(WHATS_NEW_SEEN_CONTENT_KEY, '') === signature) return false;
+      if (legacySeenMatchesContent()) {
+        storeSet(WHATS_NEW_SEEN_CONTENT_KEY, signature);
+        storeSet(WHATS_NEW_SEEN_AT_KEY, String(Date.now()));
+        return false;
+      }
+      return true;
     } catch { return true; }
   }
-  function showWhatsNew(){
-    ensureWhatsNewModal().classList.add('open');
-    markWhatsNewSeen();
+  function showWhatsNew(options = {}){
+    if (options.auto && !shouldAutoShowWhatsNew()) return false;
+    const modal = ensureWhatsNewModal();
+    if (modal.classList.contains('open')) return false;
+    modal.dataset.maWhatsNewContentSignature = whatsNewContentSignature();
+    modal.classList.add('open');
+    return true;
   }
   function onboardingComplete(){
-    try { return localStorage.getItem('modeAtlasOnboardingComplete') === 'true' || localStorage.getItem('modeAtlasStarterSeen') === 'true'; } catch { return false; }
+    try { return storeGet('modeAtlasOnboardingComplete') === 'true' || storeGet('modeAtlasStarterSeen') === 'true'; } catch { return false; }
   }
   function onboardingOpen(){ return !!document.querySelector('#maVisitModal.open'); }
+  function runWhatsNewCheck(){
+    let pending = false;
+    try { pending = sessionStorage.getItem('modeAtlasShowWhatsNewAfterOnboarding') === '1'; } catch {}
+
+    if (pending && !onboardingOpen()) {
+      try { sessionStorage.removeItem('modeAtlasShowWhatsNewAfterOnboarding'); } catch {}
+      showWhatsNew({ auto: true });
+      return;
+    }
+
+    if (pending && onboardingOpen()) return;
+
+    if (shouldAutoShowWhatsNew() && onboardingComplete() && !onboardingOpen() && ['index.html','kana.html'].includes(PAGE)) {
+      showWhatsNew();
+    }
+  }
+
   function scheduleWhatsNew(){
-    setTimeout(() => {
-      let pending = false;
-      try { pending = sessionStorage.getItem('modeAtlasShowWhatsNewAfterOnboarding') === '1'; } catch {}
-      if (pending) {
-        try { sessionStorage.removeItem('modeAtlasShowWhatsNewAfterOnboarding'); } catch {}
-        setTimeout(() => { if (!onboardingOpen()) showWhatsNew(); }, 450);
-        return;
-      }
-      if (shouldAutoShowWhatsNew() && onboardingComplete() && !onboardingOpen() && ['index.html','kana.html'].includes(PAGE)) showWhatsNew();
-    }, 1200);
+    runWhatsNewCheck();
+  }
+
+  function aboutCard(label, infoKey, note, extraInfoKey = ''){
+    const card = aboutEl('article', 'ma-about-card');
+    card.append(aboutEl('span', '', label));
+    const strong = document.createElement('strong');
+    strong.dataset.maInfo = infoKey;
+    card.append(strong);
+    const small = aboutEl('small', '', note || '');
+    if (extraInfoKey) small.dataset.maInfo = extraInfoKey;
+    card.append(small);
+    return card;
+  }
+
+  function infoRow(label, key){
+    const row = document.createElement('div');
+    row.append(aboutEl('span', '', label));
+    const strong = document.createElement('strong');
+    strong.dataset.maInfo = key;
+    row.append(strong);
+    return row;
   }
 
   function ensureAboutModal(){
     let backdrop = $('#maAboutBackdrop');
     if (backdrop) return backdrop;
+
     backdrop = document.createElement('div');
     backdrop.id = 'maAboutBackdrop';
     backdrop.className = 'ma-about-backdrop';
-    backdrop.innerHTML = `
-      <section class="ma-about-modal" role="dialog" aria-modal="true" aria-labelledby="maAboutTitle">
-        <div class="ma-about-hero">
-          <div class="ma-about-mark">かな</div>
-          <div>
-            <div class="ma-about-kicker">Mode Atlas</div>
-            <h2 id="maAboutTitle">About Mode Atlas</h2>
-            <p>Japanese study tools for kana recognition, recall, review, and connected learning branches.</p>
-          </div>
-          <button type="button" class="ma-about-close" data-ma-about-close aria-label="Close About">Close</button>
-        </div>
-        <div class="ma-about-tabs" role="tablist" aria-label="About sections">
-          <button type="button" class="active" data-ma-about-tab="overview">Overview</button>
-          <button type="button" data-ma-about-tab="whatsnew">What’s new</button>
-          <button type="button" data-ma-about-tab="legal">Legal</button>
-        </div>
-        <div class="ma-about-panel active" data-ma-about-panel="overview">
-          <div class="ma-about-grid">
-            <article class="ma-about-card"><span>App version</span><strong data-ma-info="version"></strong><small>Current app release installed in this build.</small></article>
-            <article class="ma-about-card"><span>Save version</span><strong data-ma-info="saveSchema"></strong><small>Helps keep backups compatible across app updates.</small></article>
-            <article class="ma-about-card"><span>Build</span><strong data-ma-info="build"></strong><small data-ma-info="buildDate"></small></article>
-            <article class="ma-about-card"><span>Install support</span><strong data-ma-info="installSupport"></strong><small>Add Mode Atlas to your device for quicker access.</small></article>
-          </div>
-          <div class="ma-about-section">
-            <h3>Account & save status</h3>
-            <div class="ma-about-table">
-              <div><span>Save mode</span><strong data-ma-info="saveMode"></strong></div>
-              <div><span>Sync status</span><strong data-ma-info="cloudStatus"></strong></div>
-              <div><span>Signed in</span><strong data-ma-info="signedIn"></strong></div>
-              <div><span>Connection</span><strong data-ma-info="online"></strong></div>
-              <div><span>Last cloud sync</span><strong data-ma-info="lastCloudSync"></strong></div>
-              <div><span>Local save updated</span><strong data-ma-info="localSaveUpdated"></strong></div>
-              <div><span>Storage access</span><strong data-ma-info="storage"></strong></div>
-              <div><span>Theme preference</span><strong data-ma-info="theme"></strong></div>
-            </div>
-          </div>
-          <div class="ma-about-section ma-about-credit">
-            <h3>Developer</h3>
-            <p><strong>Created by ${DEVELOPER}</strong></p>
-            <p>Designed and built as a focused Japanese study ecosystem.</p>
-            <p>Support: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a> · <a href="https://${OFFICIAL_SITE}/" target="_blank" rel="noopener">${OFFICIAL_SITE}</a></p>
-            <p class="ma-about-muted">© 2026 ${DEVELOPER}. All rights reserved.</p>
-          </div>
-        </div>
-        <div class="ma-about-panel" data-ma-about-panel="whatsnew">
-          <div class="ma-about-section">
-            <h3>What’s new in this build</h3>
-            <p class="ma-about-muted">Recent improvements that affect everyday use.</p>
-            <ul class="ma-about-list">${whatsNewItems.map(item => `<li>${item}</li>`).join('')}</ul>
-            <button type="button" class="ma-about-primary" data-ma-open-whats-new>Open update notes</button>
-          </div>
-        </div>
-        <div class="ma-about-panel" data-ma-about-panel="legal">
-          <div class="ma-about-section">
-            <h3>Privacy & data</h3>
-            <p>Mode Atlas saves learning progress on this device. Signing in lets supported progress follow you across devices.</p>
-            <p>Local backups are user-controlled exports. Manual imports prioritise the selected backup for sections it contains, while empty backup sections do not wipe useful current data.</p>
-            <p><a href="${aboutAppUrl('privacy/')}" target="_blank" rel="noopener">Open Privacy Policy</a> · <a href="${aboutAppUrl('terms/')}" target="_blank" rel="noopener">Open Terms of Use</a></p>
-          </div>
-          <div class="ma-about-section">
-            <h3>Disclaimer</h3>
-            <p>Mode Atlas is a study aid. It is not an official language certification tool and does not guarantee language proficiency outcomes.</p>
-          </div>
-          <div class="ma-about-section">
-            <h3>Credits & ownership</h3>
-            <p>Mode Atlas, its app structure, and learning interface are developed by ${DEVELOPER}. Japanese kana characters are part of the Japanese writing system and are not proprietary.</p>
-          </div>
-        </div>
-      </section>`;
+
+    const modal = aboutEl('section', 'ma-about-modal');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'maAboutTitle');
+
+    const hero = aboutEl('div', 'ma-about-hero');
+    const heroCopy = document.createElement('div');
+    const title = aboutEl('h2', '', 'About Mode Atlas');
+    title.id = 'maAboutTitle';
+    heroCopy.append(
+      aboutEl('div', 'ma-about-kicker', 'Mode Atlas'),
+      title,
+      aboutEl('p', '', 'Japanese study tools for kana recognition, recall, review, and connected learning branches.')
+    );
+    const close = aboutButton('Close', { className: 'ma-about-close', 'aria-label': 'Close About' });
+    close.dataset.maAboutClose = '';
+    hero.append(aboutEl('div', 'ma-about-mark', 'かな'), heroCopy, close);
+
+    const tabs = aboutEl('div', 'ma-about-tabs');
+    tabs.setAttribute('role', 'tablist');
+    tabs.setAttribute('aria-label', 'About sections');
+    [
+      ['overview', 'Overview', true],
+      ['whatsnew', 'What’s new', false],
+      ['legal', 'Legal', false]
+    ].forEach(([key, label, active]) => {
+      const tab = aboutButton(label, { className: active ? 'active' : '' });
+      tab.dataset.maAboutTab = key;
+      tabs.append(tab);
+    });
+
+    const overview = aboutEl('div', 'ma-about-panel active');
+    overview.dataset.maAboutPanel = 'overview';
+
+    const grid = aboutEl('div', 'ma-about-grid');
+    grid.append(
+      aboutCard('App version', 'version', 'Current app release installed in this build.'),
+      aboutCard('Save version', 'saveSchema', 'Helps keep backups compatible across app updates.'),
+      aboutCard('Build', 'build', '', 'buildDate'),
+      aboutCard('Install support', 'installSupport', 'Add Mode Atlas to your device for quicker access.')
+    );
+
+    const saveSection = aboutEl('div', 'ma-about-section');
+    saveSection.append(aboutEl('h3', '', 'Account & save status'));
+    const table = aboutEl('div', 'ma-about-table');
+    [
+      ['Save mode', 'saveMode'],
+      ['Sync status', 'cloudStatus'],
+      ['Signed in', 'signedIn'],
+      ['Connection', 'online'],
+      ['Last cloud sync', 'lastCloudSync'],
+      ['Local save updated', 'localSaveUpdated'],
+      ['Storage access', 'storage'],
+      ['Theme preference', 'theme']
+    ].forEach(([label, key]) => table.append(infoRow(label, key)));
+    saveSection.append(table);
+
+    const credit = aboutEl('div', 'ma-about-section ma-about-credit');
+    const created = document.createElement('p');
+    created.append(aboutEl('strong', '', `Created by ${DEVELOPER}`));
+    const support = document.createElement('p');
+    support.append(
+      document.createTextNode('Support: '),
+      aboutLink(SUPPORT_EMAIL, `mailto:${SUPPORT_EMAIL}`),
+      document.createTextNode(' · '),
+      aboutLink(OFFICIAL_SITE, `https://${OFFICIAL_SITE}/`, { target: '_blank', rel: 'noopener' })
+    );
+    credit.append(
+      aboutEl('h3', '', 'Developer'),
+      created,
+      aboutEl('p', '', 'Designed and built as a focused Japanese study ecosystem.'),
+      support,
+      aboutEl('p', 'ma-about-muted', `© 2026 ${DEVELOPER}. All rights reserved.`)
+    );
+    overview.append(grid, saveSection, credit);
+
+    const whatsNew = aboutEl('div', 'ma-about-panel');
+    whatsNew.dataset.maAboutPanel = 'whatsnew';
+    const whatsSection = aboutEl('div', 'ma-about-section');
+    const whatsList = aboutEl('ul', 'ma-about-list');
+    whatsNewItems.forEach(item => whatsList.append(aboutEl('li', '', item)));
+    const whatsBtn = aboutButton('Open update notes', { className: 'ma-about-primary' });
+    whatsBtn.dataset.maOpenWhatsNew = '';
+    whatsSection.append(
+      aboutEl('h3', '', 'What’s new in this build'),
+      aboutEl('p', 'ma-about-muted', 'Recent improvements that affect everyday use.'),
+      whatsList,
+      whatsBtn
+    );
+    whatsNew.append(whatsSection);
+
+    const legal = aboutEl('div', 'ma-about-panel');
+    legal.dataset.maAboutPanel = 'legal';
+
+    const privacy = aboutEl('div', 'ma-about-section');
+    const legalLinks = document.createElement('p');
+    legalLinks.append(
+      aboutLink('Open Privacy Policy', aboutAppUrl('privacy/'), { target: '_blank', rel: 'noopener' }),
+      document.createTextNode(' · '),
+      aboutLink('Open Terms of Use', aboutAppUrl('terms/'), { target: '_blank', rel: 'noopener' })
+    );
+    privacy.append(
+      aboutEl('h3', '', 'Privacy & data'),
+      aboutEl('p', '', 'Mode Atlas saves learning progress on this device. Signing in lets supported progress follow you across devices.'),
+      aboutEl('p', '', 'Local backups are user-controlled exports. Manual imports prioritise the selected backup for sections it contains, while empty backup sections do not wipe useful current data.'),
+      legalLinks
+    );
+
+    const disclaimer = aboutEl('div', 'ma-about-section');
+    disclaimer.append(
+      aboutEl('h3', '', 'Disclaimer'),
+      aboutEl('p', '', 'Mode Atlas is a study aid. It is not an official language certification tool and does not guarantee language proficiency outcomes.')
+    );
+
+    const ownership = aboutEl('div', 'ma-about-section');
+    ownership.append(
+      aboutEl('h3', '', 'Credits & ownership'),
+      aboutEl('p', '', `Mode Atlas, its app structure, and learning interface are developed by ${DEVELOPER}. Japanese kana characters are part of the Japanese writing system and are not proprietary.`)
+    );
+
+    legal.append(privacy, disclaimer, ownership);
+    modal.append(hero, tabs, overview, whatsNew, legal);
+    backdrop.append(modal);
+
     document.body.appendChild(backdrop);
     backdrop.addEventListener('click', event => {
       if (event.target === backdrop || event.target.closest('[data-ma-about-close]')) closeAbout();
@@ -253,6 +412,9 @@
   window.ModeAtlas.appInfo = getAppInfo;
   window.ModeAtlas.showWhatsNew = showWhatsNew;
 
+  document.addEventListener('ma:visit-flow-closed', runWhatsNewCheck);
+  document.addEventListener('ma:ui-refresh', runWhatsNewCheck);
+  window.addEventListener('pageshow', runWhatsNewCheck);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scheduleWhatsNew, { once: true });
   else scheduleWhatsNew();
 })();

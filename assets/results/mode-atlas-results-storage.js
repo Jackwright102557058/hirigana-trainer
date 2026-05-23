@@ -20,7 +20,7 @@
   };
 
   function store(){ return window.ModeAtlasStorage; }
-  function write(key, value){ const s = store(); return s?.set ? s.set(key, value) : (localStorage.setItem(key, String(value)), true); }
+  function write(key, value){ const s = store(); return s?.set ? s.set(key, value) : false; }
 
   function keys(mode){
     return RESULT_KEYS[mode] || RESULT_KEYS.reading;

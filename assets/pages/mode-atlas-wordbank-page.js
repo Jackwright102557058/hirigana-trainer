@@ -394,13 +394,137 @@ function refreshProfileShell() {
       });
     }
 
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+
+    function createEl(tag, className = "", text = "") {
+      const el = document.createElement(tag);
+      if (className) el.className = className;
+      if (text !== "") el.textContent = text;
+      return el;
+    }
+
+    function safeEntryDomId(id) {
+      return String(id || "entry").replace(/[^A-Za-z0-9_-]/g, "_");
+    }
+
+    function makeTextInput({ id, label, value, field, entryId, placeholder = "" }) {
+      const wrap = createEl("div", "field-small");
+      const labelEl = document.createElement("label");
+      labelEl.setAttribute("for", id);
+      labelEl.textContent = label;
+
+      const input = document.createElement("input");
+      input.id = id;
+      input.type = "text";
+      input.name = field === "kana" ? `kana_word_${safeEntryDomId(entryId)}` : `word_english_${safeEntryDomId(entryId)}`;
+      input.value = value || "";
+      input.placeholder = placeholder;
+      input.dataset.field = field;
+      input.dataset.id = entryId;
+      input.autocomplete = "off";
+      input.setAttribute("autocorrect", "off");
+      input.setAttribute("autocapitalize", "off");
+      input.spellcheck = false;
+      input.setAttribute("enterkeyhint", "done");
+
+      wrap.append(labelEl, input);
+      return wrap;
+    }
+
+    function makeEntryCard(entry) {
+      const entryId = String(entry.id || "");
+      const safeId = safeEntryDomId(entryId);
+      const type = classifyKanaType(entry.kana);
+      const englishMissing = !String(entry.english || "").trim();
+      const isExpanded = expandedEntries.has(entryId);
+
+      const details = createEl("details", "card");
+      details.id = `entry-${safeId}`;
+      details.dataset.id = entryId;
+      details.open = isExpanded;
+
+      const summary = createEl("summary", "card-summary");
+      summary.dataset.id = entryId;
+
+      const main = createEl("div", "card-summary-main");
+      main.append(
+        createEl("div", "kana", entry.kana || ""),
+        createEl("div", "romaji", entry.romaji || "—")
+      );
+
+      const englishCol = createEl("div", "summary-col");
+      englishCol.append(createEl("div", "summary-label", "English"), createEl("div", "summary-value", entry.english || "—"));
+
+      const typeCol = createEl("div", "summary-col");
+      typeCol.append(
+        createEl("div", "summary-label", "Type"),
+        createEl("div", "summary-value", `${type}${entry.favorite ? " · ★" : ""}${englishMissing ? " · missing" : ""}`)
+      );
+
+      const dateCol = createEl("div", "summary-col summary-date");
+      dateCol.append(createEl("div", "summary-label", "Date added"), createEl("div", "summary-value", formatDate(entry.createdAt)));
+
+      summary.append(main, englishCol, typeCol, dateCol, createEl("div", "summary-toggle", isExpanded ? "−" : "+"));
+
+      const body = createEl("div", "card-body");
+      const cardTop = createEl("div", "card-top");
+      const meta = createEl("div", "meta");
+      meta.append(createEl("span", "tag", type));
+      if (englishMissing) meta.append(createEl("span", "tag", "missing English"));
+
+      const star = createEl("button", "btn-secondary star-btn", entry.favorite ? "★" : "☆");
+      star.type = "button";
+      star.dataset.action = "favorite";
+      star.dataset.id = entryId;
+      star.title = "Toggle favourite";
+      meta.append(star);
+      cardTop.append(meta);
+
+      const fields = createEl("div", "fields");
+      const fieldGrid = createEl("div", "field-grid");
+      fieldGrid.append(
+        makeTextInput({ id: `kana-${safeId}`, label: "Kana", value: entry.kana, field: "kana", entryId }),
+        makeTextInput({ id: `english-${safeId}`, label: "English", value: entry.english, field: "english", entryId, placeholder: "Add meaning now or later" })
+      );
+
+      const notesGrid = createEl("div", "field-grid single");
+      const notesWrap = createEl("div", "field-small");
+      const notesLabel = document.createElement("label");
+      notesLabel.setAttribute("for", `notes-${safeId}`);
+      notesLabel.textContent = "Notes";
+
+      const notes = document.createElement("textarea");
+      notes.id = `notes-${safeId}`;
+      notes.name = `word_notes_${safeId}`;
+      notes.dataset.field = "notes";
+      notes.dataset.id = entryId;
+      notes.placeholder = "Add notes, usage, reminders, mnemonics, etc.";
+      notes.autocomplete = "off";
+      notes.setAttribute("autocorrect", "off");
+      notes.setAttribute("autocapitalize", "off");
+      notes.spellcheck = false;
+      notes.value = entry.notes || "";
+      notesWrap.append(notesLabel, notes);
+      notesGrid.append(notesWrap);
+      fields.append(fieldGrid, notesGrid);
+
+      const actions = createEl("div", "card-actions");
+      actions.append(createEl("div", "small-muted", `Added ${formatDate(entry.createdAt)} · Updated ${formatDate(entry.updatedAt)}`));
+
+      const inline = createEl("div", "inline-actions");
+      const save = createEl("button", "btn-primary", "Save Changes");
+      save.type = "button";
+      save.dataset.action = "save";
+      save.dataset.id = entryId;
+      const del = createEl("button", "btn-danger", "Delete");
+      del.type = "button";
+      del.dataset.action = "delete";
+      del.dataset.id = entryId;
+      inline.append(save, del);
+      actions.append(inline);
+
+      body.append(cardTop, fields, actions);
+      details.append(summary, body);
+      return details;
     }
 
     function renderEntries(focusId = null) {
@@ -408,78 +532,17 @@ function refreshProfileShell() {
       const items = getFilteredEntries();
 
       if (!items.length) {
-        elements.entries.innerHTML = '<div class="empty">No matching words yet. Add one above to get started.</div>';
+        elements.entries.replaceChildren(createEl("div", "empty", "No matching words yet. Add one above to get started."));
         return;
       }
 
-      elements.entries.innerHTML = items.map(entry => {
-        const type = classifyKanaType(entry.kana);
-        const englishMissing = !entry.english.trim();
-        const isExpanded = expandedEntries.has(entry.id);
-        return `
-          <details class="card" id="entry-${entry.id}" ${isExpanded ? 'open' : ''}>
-            <summary class="card-summary" data-id="${entry.id}">
-              <div class="card-summary-main">
-                <div class="kana">${escapeHtml(entry.kana)}</div>
-                <div class="romaji">${escapeHtml(entry.romaji || '—')}</div>
-              </div>
-              <div class="summary-col">
-                <div class="summary-label">English</div>
-                <div class="summary-value">${escapeHtml(entry.english || '—')}</div>
-              </div>
-              <div class="summary-col">
-                <div class="summary-label">Type</div>
-                <div class="summary-value">${escapeHtml(type)}${entry.favorite ? ' · ★' : ''}${englishMissing ? ' · missing' : ''}</div>
-              </div>
-              <div class="summary-col summary-date">
-                <div class="summary-label">Date added</div>
-                <div class="summary-value">${escapeHtml(formatDate(entry.createdAt))}</div>
-              </div>
-              <div class="summary-toggle">${isExpanded ? '−' : '+'}</div>
-            </summary>
-
-            <div class="card-body">
-              <div class="card-top">
-                <div class="meta">
-                  <span class="tag">${type}</span>
-                  ${englishMissing ? '<span class="tag">missing English</span>' : ''}
-                  <button class="btn-secondary star-btn" type="button" data-action="favorite" data-id="${entry.id}" title="Toggle favourite">${entry.favorite ? '★' : '☆'}</button>
-                </div>
-              </div>
-
-              <div class="fields">
-                <div class="field-grid">
-                  <div class="field-small">
-                    <label for="kana-${entry.id}">Kana</label>
-                    <input id="kana-${entry.id}" type="text" name="kana_word_${entry.id}" value="${escapeHtml(entry.kana)}" data-field="kana" data-id="${entry.id}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" />
-                  </div>
-                  <div class="field-small">
-                    <label for="english-${entry.id}">English</label>
-                    <input id="english-${entry.id}" type="text" name="word_english_${entry.id}" value="${escapeHtml(entry.english)}" placeholder="Add meaning now or later" data-field="english" data-id="${entry.id}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" />
-                  </div>
-                </div>
-                <div class="field-grid single">
-                  <div class="field-small">
-                    <label for="notes-${entry.id}">Notes</label>
-                    <textarea id="notes-${entry.id}" name="word_notes_${entry.id}" data-field="notes" data-id="${entry.id}" placeholder="Add notes, usage, reminders, mnemonics, etc." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">${escapeHtml(entry.notes)}</textarea>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card-actions">
-                <div class="small-muted">Added ${formatDate(entry.createdAt)} · Updated ${formatDate(entry.updatedAt)}</div>
-                <div class="inline-actions">
-                  <button class="btn-primary" type="button" data-action="save" data-id="${entry.id}">Save Changes</button>
-                  <button class="btn-danger" type="button" data-action="delete" data-id="${entry.id}">Delete</button>
-                </div>
-              </div>
-            </div>
-          </details>
-        `;
-      }).join('');
+      const fragment = document.createDocumentFragment();
+      items.forEach(entry => fragment.append(makeEntryCard(entry)));
+      elements.entries.replaceChildren(fragment);
 
       if (focusId) {
-        const target = document.getElementById(`entry-${focusId}`);
+        const target = Array.from(elements.entries.querySelectorAll("details.card"))
+          .find(node => node.dataset.id === String(focusId));
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
@@ -506,7 +569,7 @@ function refreshProfileShell() {
     elements.entries.addEventListener('toggle', event => {
       const details = event.target.closest('details.card');
       if (!details) return;
-      const id = details.id.replace('entry-', '');
+      const id = details.dataset.id || details.id.replace('entry-', '');
       if (details.open) expandedEntries.add(id);
       else expandedEntries.delete(id);
       const toggleEl = details.querySelector('.summary-toggle');

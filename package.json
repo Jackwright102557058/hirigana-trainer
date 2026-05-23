@@ -1,0 +1,15 @@
+{
+  "name": "mode-atlas",
+  "version": "2.19.26",
+  "private": true,
+  "description": "Mode Atlas static web app smoke tests",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test tests/smoke.spec.js",
+    "test:headed": "playwright test --headed",
+    "test:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

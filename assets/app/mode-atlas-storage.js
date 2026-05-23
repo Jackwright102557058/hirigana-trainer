@@ -20,6 +20,67 @@
     wordBank: 'kanaWordBank'
   });
 
+  const GROUPS = Object.freeze({
+    reading: Object.freeze({
+      settings: KEYS.readingSettings,
+      charStats: KEYS.readingCharStats,
+      charTimes: KEYS.readingCharTimes,
+      srs: KEYS.readingSrs,
+      scoreHistory: KEYS.readingScoreHistory,
+      dailyHistory: KEYS.readingDailyHistory,
+      highScore: KEYS.readingHighScore,
+      testResults: KEYS.readingTestResults
+    }),
+    writing: Object.freeze({
+      settings: KEYS.writingSettings,
+      charStats: KEYS.writingCharStats,
+      charTimes: KEYS.writingCharTimes,
+      srs: KEYS.writingSrs,
+      scoreHistory: KEYS.writingScoreHistory,
+      dailyHistory: KEYS.writingDailyHistory,
+      highScore: KEYS.writingHighScore,
+      testResults: KEYS.writingTestResults
+    })
+  });
+
+  const SCHEMA_VERSION = 1;
+
+  const COMPAT_KEYS = Object.freeze({
+    readingTests: Object.freeze([
+      KEYS.readingTestResults,
+      KEYS.readingTestResultsBackup,
+      'kanaTrainerTestModeResults',
+      'kanaTrainerReadingTestModeResults'
+    ]),
+    writingTests: Object.freeze([
+      KEYS.writingTestResults,
+      KEYS.writingTestResultsBackup,
+      'kanaTrainerWritingTestModeResults'
+    ])
+  });
+
+
+  function modeKeys(mode) {
+    return GROUPS[mode === 'writing' || mode === 'reverse' ? 'writing' : 'reading'];
+  }
+  function readModeJSON(mode, name, fallback) {
+    const key = modeKeys(mode)?.[name];
+    return key ? json(key, fallback) : fallback;
+  }
+  function writeModeJSON(mode, name, value) {
+    const key = modeKeys(mode)?.[name];
+    return key ? setJSON(key, value) : false;
+  }
+  function readModeNumber(mode, name, fallback = 0) {
+    const key = modeKeys(mode)?.[name];
+    return key ? number(key, fallback) : fallback;
+  }
+  function writeModeNumber(mode, name, value) {
+    const key = modeKeys(mode)?.[name];
+    return key ? set(key, value) : false;
+  }
+
+
   function safeParse(value, fallback) {
     if (value == null || value === '') return fallback;
     try { return JSON.parse(value); } catch { return fallback; }
@@ -57,5 +118,5 @@
     return '';
   }
 
-  window.ModeAtlasStorage = Object.freeze({ KEYS, safeParse, get, set, remove, has, json, setJSON, number, now, removeMany, collect, apply, snapshot, markUpdatedForKey });
+  window.ModeAtlasStorage = Object.freeze({ KEYS, GROUPS, COMPAT_KEYS, SCHEMA_VERSION, modeKeys, readModeJSON, writeModeJSON, readModeNumber, writeModeNumber, safeParse, get, set, remove, has, json, setJSON, number, now, removeMany, collect, apply, snapshot, markUpdatedForKey });
 })();

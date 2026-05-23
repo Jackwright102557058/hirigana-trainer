@@ -51,6 +51,22 @@
 }
 .ma-settings-trigger .ma-settings-icon{font-size:2rem;line-height:1;display:block;}
 .ma-settings-trigger .ma-settings-label{display:none;}
+
+/* Shared nav account/action ordering.
+   Branch-nav pages use page-specific HTML, then this shared binding injects Settings.
+   Keep the action pair consistent as: Profile, then Settings. */
+.branch-links > .profile-trigger,
+.nav > .profile-trigger,
+.topbar > .profile-trigger {
+  order: 90;
+}
+
+.branch-links > .ma-settings-trigger,
+.nav > .ma-settings-trigger,
+.topbar > .ma-settings-trigger {
+  order: 91;
+}
+
 @media(max-width:1180px){body[data-effective-display-mode="tablet"] .ma-shared-profile-drawer,body[data-effective-display-mode="tablet"] .ma-shared-settings-drawer{width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 32px);}}
 @media(max-width:560px){.ma-shared-profile-drawer,.ma-shared-settings-drawer{top:12px;right:12px;left:12px;width:auto;max-height:calc(100dvh - 24px);border-radius:22px;}.ma-branch-grid,.ma-shared-settings-drawer .ma-settings-grid.two,.ma-shared-settings-drawer .ma-settings-grid.three,.ma-shared-settings-drawer .ma-settings-grid.four{grid-template-columns:1fr;}}
 body[data-effective-display-mode="phone"] .ma-shared-profile-drawer,body[data-effective-display-mode="phone"] .ma-shared-settings-drawer{top:10px;right:10px;left:10px;width:auto;max-height:calc(100dvh - 20px);border-radius:22px;padding:14px;}body[data-effective-display-mode="phone"] .ma-shared-profile-drawer .ma-menu-action,body[data-effective-display-mode="phone"] .ma-shared-settings-drawer .ma-menu-action,body[data-effective-display-mode="phone"] .ma-shared-settings-drawer .ma-settings-choice{font-size:13px;}
@@ -69,46 +85,46 @@ body[data-effective-display-mode="phone"] .ma-branch-grid,body[data-effective-di
   .topbar .ma-settings-trigger,
   .branch-nav .ma-settings-trigger,
   .study-nav .ma-settings-trigger {
-    position: absolute !important;
-    top: max(12px, env(safe-area-inset-top, 0px)) !important;
-    right: 72px !important;
-    z-index: 9 !important;
-    width: 48px !important;
-    height: 48px !important;
-    min-width: 48px !important;
-    max-width: 48px !important;
-    min-height: 48px !important;
-    padding: 0 !important;
-    border-radius: 999px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    overflow: hidden !important;
+    position: absolute;
+    top: max(12px, env(safe-area-inset-top, 0px));
+    right: 72px;
+    z-index: 9;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    min-height: 48px;
+    padding: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
   }
 
   .topbar .ma-settings-trigger .ma-settings-icon,
   .branch-nav .ma-settings-trigger .ma-settings-icon,
   .study-nav .ma-settings-trigger .ma-settings-icon {
-    font-size: 1.55rem !important;
+    font-size: 1.55rem;
   }
 
   .topbar .ma-settings-trigger .ma-settings-label,
   .branch-nav .ma-settings-trigger .ma-settings-label,
   .study-nav .ma-settings-trigger .ma-settings-label {
-    display: none !important;
+    display: none;
   }
 
   .ma-shared-profile-drawer,
   .ma-shared-settings-drawer {
-    top: calc(env(safe-area-inset-top, 0px) + 14px) !important;
-    right: 12px !important;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 14px) !important;
-    left: 12px !important;
-    width: auto !important;
-    max-height: none !important;
-    border-radius: 22px !important;
-    padding: 14px !important;
-    overflow-y: auto !important;
+    top: calc(env(safe-area-inset-top, 0px) + 14px);
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+    left: 12px;
+    width: auto;
+    max-height: none;
+    border-radius: 22px;
+    padding: 14px;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -142,7 +158,7 @@ body[data-effective-display-mode="phone"] .ma-branch-grid,body[data-effective-di
   .ma-shared-settings-drawer .ma-settings-grid.three,
   .ma-shared-settings-drawer .ma-settings-grid.four,
   .ma-branch-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -150,19 +166,198 @@ body[data-effective-display-mode="phone"] .ma-branch-grid,body[data-effective-di
   .topbar .ma-settings-trigger,
   .branch-nav .ma-settings-trigger,
   .study-nav .ma-settings-trigger {
-    top: 10px !important;
-    right: 58px !important;
-    width: 42px !important;
-    height: 42px !important;
-    min-width: 42px !important;
-    max-width: 42px !important;
-    min-height: 42px !important;
+    top: 10px;
+    right: 58px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    max-width: 42px;
+    min-height: 42px;
   }
 
   .topbar .ma-settings-trigger .ma-settings-icon,
   .branch-nav .ma-settings-trigger .ma-settings-icon,
   .study-nav .ma-settings-trigger .ma-settings-icon {
-    font-size: 1.35rem !important;
+    font-size: 1.35rem;
+  }
+}
+
+
+/* Responsive account/profile ownership moved from mode-atlas-responsive.css. */
+html[data-ma-signed-in="true"] #profileSignInBtn,
+html[data-ma-signed-in="true"] #studyProfileSignIn,
+html[data-ma-signed-in="true"] #identitySignInBtn,
+html[data-ma-signed-in="true"] [data-profile-sign-in],
+html[data-ma-signed-in="true"] [data-ma-sign-in] {
+  display: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+html[data-ma-signed-in="false"] #profileSignOutBtn,
+html[data-ma-signed-in="false"] #studyProfileSignOut,
+html[data-ma-signed-in="false"] #identitySignOutBtn,
+html[data-ma-signed-in="false"] [data-profile-sign-out],
+html[data-ma-signed-in="false"] [data-ma-sign-out] {
+  display: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+html[data-ma-signed-in="true"] #profileSignOutBtn,
+html[data-ma-signed-in="true"] #studyProfileSignOut,
+html[data-ma-signed-in="true"] #identitySignOutBtn,
+html[data-ma-signed-in="true"] [data-profile-sign-out],
+html[data-ma-signed-in="true"] [data-ma-sign-out],
+html[data-ma-signed-in="false"] #profileSignInBtn,
+html[data-ma-signed-in="false"] #studyProfileSignIn,
+html[data-ma-signed-in="false"] #identitySignInBtn,
+html[data-ma-signed-in="false"] [data-profile-sign-in],
+html[data-ma-signed-in="false"] [data-ma-sign-in] {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+@media (max-width: 760px), (max-width: 900px) and (orientation: portrait) {
+  .branch-links > .profile-trigger,
+  .nav > .profile-trigger,
+  .topbar > .profile-trigger,
+  .study-nav-btn.profile-trigger,
+  #profileOpenBtn,
+  #studyProfileBtn {
+    grid-column: 2;
+    grid-row: 1;
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    padding: 0;
+    margin: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transform: none;
+    z-index: 8;
+  }
+
+  .profile-trigger > span:not(.profile-dot),
+  .study-nav-btn.profile-trigger > span:not(.profile-dot),
+  #profileOpenBtn > span:not(.profile-dot),
+  #studyProfileBtn > span:not(.profile-dot) {
+    display: none;
+  }
+
+  .profile-dot,
+  #topProfileDot,
+  #profileDot,
+  #studyTopProfileDot {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 999px;
+    overflow: hidden;
+    font-size: 0;
+  }
+
+  .profile-dot img,
+  #topProfileDot img,
+  #profileDot img,
+  #studyTopProfileDot img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  .brand,
+  .branch-brand,
+  .study-brand {
+    max-width: calc(100vw - 186px);
+  }
+}
+
+@media (max-width: 520px) {
+  .branch-links > .profile-trigger,
+  .nav > .profile-trigger,
+  .topbar > .profile-trigger,
+  .study-nav-btn.profile-trigger,
+  #profileOpenBtn,
+  #studyProfileBtn {
+    top: 12px;
+    right: 12px;
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    max-width: 52px;
+  }
+
+  .profile-dot,
+  #topProfileDot,
+  #profileDot,
+  #studyTopProfileDot {
+    width: 39px;
+    height: 39px;
+    min-width: 39px;
+  }
+}
+
+@media (max-width: 760px), (max-width: 900px) and (orientation: portrait) {
+  .profile-trigger,
+  .branch-links > .profile-trigger,
+  .nav > .profile-trigger,
+  .study-nav-btn.profile-trigger,
+  #profileOpenBtn,
+  #studyProfileBtn {
+    top: 10px;
+    right: 10px;
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    max-width: 46px;
+    padding: 0;
+  }
+
+  .profile-dot,
+  #topProfileDot,
+  #profileDot,
+  #studyTopProfileDot {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+}
+
+@media (max-width: 430px) {
+  .profile-trigger,
+  .branch-links > .profile-trigger,
+  .nav > .profile-trigger,
+  .study-nav-btn.profile-trigger,
+  #profileOpenBtn,
+  #studyProfileBtn {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    max-width: 42px;
+  }
+
+  .profile-dot,
+  #topProfileDot,
+  #profileDot,
+  #studyTopProfileDot {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+  }
+
+  .brand,
+  .branch-brand,
+  .study-brand {
+    max-width: calc(100vw - 150px);
   }
 }
 

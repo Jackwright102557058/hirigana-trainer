@@ -25,8 +25,31 @@
     pro:{label:'Pro',hint:false,srs:true,dakuten:true,yoon:true,extendedKatakana:true,confusableKana:false,hiraganaRows:HIRA_ROWS.slice(),katakanaRows:KATA_ROWS.slice()}
   };
 
-  function readJSON(k,f){try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):f;}catch{return f;}}
-  function writeJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+  function storeGet(key, fallback = '') {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+  function storeSet(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  }
+  function storeRemove(key) {
+    const store = window.ModeAtlasStorage;
+    return store?.remove?.(key) ?? localStorage.removeItem(key);
+  }
+  function storeJSON(key, fallback) {
+    const store = window.ModeAtlasStorage;
+    if (store?.json) return store.json(key, fallback);
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }
+  function storeSetJSON(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.setJSON?.(key, value) ?? localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function readJSON(k,f){try{return storeJSON(k,f);}catch{return f;}}
+  function writeJSON(k,v){try{storeSetJSON(k,v);}catch{}}
   function getSettings(){
     try{ if(typeof settings==='object' && settings) return settings; }catch{}
     const s=readJSON(storeKey,{});
@@ -37,16 +60,9 @@
     Object.assign(s,next);
     try{ if(typeof settings==='object' && settings) Object.assign(settings,s); }catch{}
     writeJSON(storeKey,s);
-    try{localStorage.setItem('settingsUpdatedAt',String(Date.now()));}catch{}
+    try{storeSet('settingsUpdatedAt',String(Date.now()));}catch{}
     try{window.KanaCloudSync?.markSectionUpdated?.(isWriting?'writing':'reading');window.KanaCloudSync?.scheduleSync?.();}catch{}
     return s;
-  }
-  function toast(msg,type='info'){
-    try{ if(window.ModeAtlas?.toast) return window.ModeAtlas.toast(msg,type,2800); }catch{}
-    let wrap=document.querySelector('.ma-toast-wrap');
-    if(!wrap){wrap=document.createElement('div');wrap.className='ma-toast-wrap';document.body.appendChild(wrap);}
-    const node=document.createElement('div');node.className='ma-toast '+type;node.textContent=msg;wrap.appendChild(node);
-    setTimeout(()=>{node.style.opacity='0';setTimeout(()=>node.remove(),260);},2800);
   }
   function arr(v){return Array.isArray(v)?v.slice().sort():[];}
   function sameArr(a,b){a=arr(a);b=arr(b);return a.length===b.length&&a.every((x,i)=>x===b[i]);}
@@ -60,7 +76,10 @@
     return sameArr(s.hiraganaRows,p.hiraganaRows)&&sameArr(s.katakanaRows,p.katakanaRows);
   }
   function inferActivePreset(){
-    const stored=(window.__maStableActivePreset||localStorage.getItem('modeAtlasActivePreset')||'').toLowerCase();
+    const branch = isWriting ? 'writing' : 'reading';
+    const fromPresetModule = window.ModeAtlasPresets?.activePresetFor?.(branch) || '';
+    if (fromPresetModule && matchesPreset(fromPresetModule)) return fromPresetModule;
+    const stored=(window.__maStableActivePreset||storeGet('modeAtlasActivePreset','')||'').toLowerCase();
     if(stored && matchesPreset(stored)) return stored;
     return Object.keys(PRESETS).find(matchesPreset)||'';
   }
@@ -72,14 +91,36 @@
     try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch{}
     try{ if(typeof renderScoreHistory==='function') renderScoreHistory(); }catch{}
     try{ if(typeof saveAll==='function') saveAll(); }catch{ writeJSON(storeKey,getSettings()); }
-    setTimeout(markActive,0); setTimeout(markActive,80);
+    markActive();
+    window.ModeAtlasLifecycle?.requestUiRefresh?.('trainer-controls-save');
   }
   function setActivePreset(id){
-    if(id){window.__maStableActivePreset=id;localStorage.setItem('modeAtlasActivePreset',id);} else {window.__maStableActivePreset='';localStorage.removeItem('modeAtlasActivePreset');}
+    if(id){window.__maStableActivePreset=id;storeSet('modeAtlasActivePreset',id);} else {window.__maStableActivePreset='';storeRemove('modeAtlasActivePreset');}
+  }
+
+  const PRESET_PROGRESS_KEY = 'modeAtlasPresetAchievementProgress';
+  function readPresetProgress(){
+    const data = readJSON(PRESET_PROGRESS_KEY, {});
+    const out = {};
+    Object.keys(PRESETS).forEach(id => out[id] = Math.max(0, Math.min(100, Number(data && data[id] || 0))));
+    return out;
+  }
+  function writePresetProgress(progress){
+    writeJSON(PRESET_PROGRESS_KEY, progress || {});
+    try { storeSet('modeAtlasPresetAchievementUpdatedAt', String(Date.now())); } catch {}
+  }
+  function recordPresetCorrect(count = 1){
+    const active = inferActivePreset();
+    if(!active || !matchesPreset(active)) return '';
+    const progress = readPresetProgress();
+    progress[active] = Math.min(100, Math.max(0, Number(progress[active] || 0)) + Math.max(1, Number(count) || 1));
+    writePresetProgress(progress);
+    try { document.dispatchEvent(new CustomEvent('ma:preset-progress-updated', { detail: { id: active, value: progress[active] } })); } catch {}
+    return active;
   }
   function clearPresetForCustom(showToast){
     const had=!!inferActivePreset();
-    if(had){setActivePreset(''); if(showToast) toast('Custom practice modes chosen · presets turned off.','warn');}
+    if(had){setActivePreset(''); if(showToast) window.ModeAtlas?.toast?.('Custom practice modes chosen · presets turned off.','warn',2800);}
   }
   function applyPreset(id){
     id = window.ModeAtlasPresets?.normaliseId?.(id) || String(id || '').toLowerCase();
@@ -93,7 +134,7 @@
         focusWeak:false,endless:false,timeTrial:false,dailyChallenge:false,testMode:false,comboKana:false,speedRun:false,
         mobileMode:false,statsVisible:true,scoresVisible:true,activeBottomTab:'modifiers',optionsOpen:false
       },p));
-      localStorage.removeItem('modeAtlasConfusableMode');
+      storeRemove('modeAtlasConfusableMode');
       setActivePreset(id);
     }
     saveAndRefresh();
@@ -189,7 +230,8 @@
       btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',on?'true':'false');
     });
     document.querySelectorAll('#modifierOptions .toggle-btn,#modifierOptions button').forEach(btn=>{
-      const key=labelToKey(btn); if(!key) return;
+      if (btn.hasAttribute('data-preset')) return;
+      const key=labelToKey(btn); if(!key || key === 'preset') return;
       const on=!!s[key]; btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',on?'true':'false');
     });
     document.querySelectorAll('#rowOptions .toggle-btn,#rowOptions button,#katakanaRowOptions .toggle-btn,#katakanaRowOptions button').forEach(btn=>{
@@ -214,10 +256,10 @@
   function bootFromHub(){
     try{
       const params=new URLSearchParams(location.search);
-      if(params.get('confusable')==='1'||localStorage.getItem('modeAtlasConfusableMode')==='1'){
+      if(params.get('confusable')==='1'||storeGet('modeAtlasConfusableMode')==='1'){
         const s=getSettings();
         Object.assign(s,{confusableKana:true,hint:false,srs:true,focusWeak:false,endless:false,timeTrial:false,dailyChallenge:false,testMode:false,comboKana:false,speedRun:false,dakuten:false,yoon:false,extendedKatakana:false,hiraganaRows:CONF_HIRA_ROWS.slice(),katakanaRows:CONF_KATA_ROWS.slice(),activeBottomTab:'modifiers'});
-        setSettings(s); setActivePreset(''); localStorage.removeItem('modeAtlasConfusableMode');
+        setSettings(s); setActivePreset(''); storeRemove('modeAtlasConfusableMode');
         if(params.get('confusable')==='1'&&history.replaceState) history.replaceState(null,'',location.pathname);
         saveAndRefresh();
       }
@@ -234,7 +276,9 @@
   }
   window.ModeAtlasTrainerControls = Object.assign(window.ModeAtlasTrainerControls || {}, {
     refresh: function(){ install(); },
-    applyPreset
+    applyPreset,
+    recordPresetCorrect,
+    readPresetProgress
   });
   window.addEventListener('click',handleClick,true);
   window.addEventListener('keydown',function(e){
@@ -246,9 +290,9 @@
   window.ModeAtlas.applyPracticePreset=applyPreset;
   window.ModeAtlas.refreshTrainerControls=markActive;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
-  setTimeout(install,120);
-  setTimeout(install,500);
-  window.addEventListener('load',()=>setTimeout(install,0));
-  window.addEventListener('pageshow',()=>setTimeout(install,80));
-  window.addEventListener('modeAtlasPresetChanged',()=>setTimeout(install,0));
+  window.addEventListener('load', install);
+  window.addEventListener('pageshow', install);
+  document.addEventListener('ma:ui-refresh', install);
+  document.addEventListener('ma:trainer-ready', install);
+  window.addEventListener('modeAtlasPresetChanged', install);
 })();

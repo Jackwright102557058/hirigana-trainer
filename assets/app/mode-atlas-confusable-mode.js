@@ -42,9 +42,9 @@
   function applyRouteState(){
     if(!isTrainer()) return;
     const params=new URLSearchParams(location.search);
-    if(params.get('confusable')!=='1' && localStorage.getItem('modeAtlasConfusableMode')!=='1') return;
+    if(params.get('confusable')!=='1' && storeGet('modeAtlasConfusableMode')!=='1') return;
     enable(true);
-    localStorage.removeItem('modeAtlasConfusableMode');
+    storeRemove('modeAtlasConfusableMode');
     if(params.get('confusable')==='1' && history.replaceState) history.replaceState(null,'',location.pathname);
   }
   function syncButton(){
@@ -57,5 +57,6 @@
   window.ModeAtlas=window.ModeAtlas||{};
   window.ModeAtlas.enableConfusableKana=enable;
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
-  window.addEventListener('pageshow',()=>setTimeout(boot,50));
+  window.addEventListener('pageshow',boot);
+  document.addEventListener('ma:ui-refresh', boot);
 })();

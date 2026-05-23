@@ -30,6 +30,16 @@
     });
   }
 
+  function markBackupExported(){
+    try {
+      const now = String(Date.now());
+      window.ModeAtlasStorage?.set?.('modeAtlasLastExportAt', now) ?? localStorage.setItem('modeAtlasLastExportAt', now);
+      window.ModeAtlasStorage?.set?.('modeAtlasLastBackupAt', now) ?? localStorage.setItem('modeAtlasLastBackupAt', now);
+      document.dispatchEvent(new CustomEvent('ma:progress-updated', { detail: { source: 'backup-export' } }));
+      window.ModeAtlasFeatures?.checkAchievements?.();
+    } catch {}
+  }
+
   function downloadBackup(){
     const backup = getBackup();
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -41,6 +51,7 @@
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    markBackupExported();
     setStatus('Save exported.');
     refreshSyncPills();
   }
@@ -49,6 +60,7 @@
     const txt = JSON.stringify(getBackup(), null, 2);
     try {
       await navigator.clipboard.writeText(txt);
+      markBackupExported();
       setStatus('Save copied.');
     } catch {
       downloadBackup();
@@ -58,14 +70,37 @@
 
 
 
-  function escapeHtml(value){
-    return String(value == null ? '' : value).replace(/[&<>"]/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch]));
+
+  function createImportEl(tag, className = '', text = '') {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== '') el.textContent = text;
+    return el;
+  }
+
+  function appendStrongLine(parent, label, value) {
+    const span = document.createElement('span');
+    span.append(document.createTextNode(label + ': '));
+    const strong = document.createElement('strong');
+    strong.textContent = String(value);
+    span.append(strong);
+    parent.append(span);
   }
 
   function fallbackImportPreview(parsed){
+    const Store = window.ModeAtlasStorage;
+    const K = Store?.KEYS || {};
+    const readingKeys = Store?.modeKeys?.('reading') || {};
+    const writingKeys = Store?.modeKeys?.('writing') || {};
+    const legacy = {
+      readingTests: ['testModeResults', K.readingTestResultsBackup, 'kanaTrainerTestModeResults', 'kanaTrainerReadingTestModeResults'].filter(Boolean),
+      writingTests: [K.writingTestResults, K.writingTestResultsBackup, 'kanaTrainerWritingTestModeResults'].filter(Boolean)
+    };
+
     const data = parsed?.data || parsed?.localStorage || parsed;
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Invalid save file');
-    const has = (key) => Object.prototype.hasOwnProperty.call(data, key);
+
+    const has = (key) => !!key && Object.prototype.hasOwnProperty.call(data, key);
     const readArray = (key) => {
       if (!has(key)) return [];
       const value = data[key];
@@ -85,18 +120,51 @@
       }
       return parsedValue && typeof parsedValue === 'object' && !Array.isArray(parsedValue) ? Object.keys(parsedValue).length : 0;
     };
+    const modeWillImport = (keys) => Object.values(keys || {}).some(has);
+    const maxArrayCount = (keys) => Math.max(0, ...(keys || []).map((key) => readArray(key).length));
+
     const sections = [
-      { name:'reading', label:'Reading Practice', current: Object.keys(JSON.parse(localStorage.getItem('charStats') || '{}')).length + ' kana stats', incoming: countObj('charStats') + ' kana stats', willImport: has('charStats') || has('settings') || has('charTimes') || has('charSrs') },
-      { name:'writing', label:'Writing Practice', current: Object.keys(JSON.parse(localStorage.getItem('reverseCharStats') || '{}')).length + ' kana stats', incoming: countObj('reverseCharStats') + ' kana stats', willImport: has('reverseCharStats') || has('reverseSettings') || has('reverseCharTimes') || has('reverseCharSrs') },
-      { name:'readingTests', label:'Reading Test Results', current: readArrayFromLocal('testModeResults').length + ' reading tests', incoming: Math.max(readArray('testModeResults').length, readArray('readingTestModeResults').length, readArray('kanaTrainerTestModeResults').length).toString() + ' reading tests', willImport: has('testModeResults') || has('readingTestModeResults') || has('kanaTrainerTestModeResults') },
-      { name:'writingTests', label:'Writing Test Results', current: readArrayFromLocal('writingTestModeResults').length + ' writing tests', incoming: Math.max(readArray('writingTestModeResults').length, readArray('reverseTestModeResults').length).toString() + ' writing tests', willImport: has('writingTestModeResults') || has('reverseTestModeResults') },
-      { name:'wordBank', label:'Word Bank', current: readArrayFromLocal('kanaWordBank').length + ' word bank items', incoming: readArray('kanaWordBank').length + ' word bank items', willImport: has('kanaWordBank') }
+      {
+        name:'reading',
+        label:'Reading Practice',
+        current: Object.keys(Store?.readModeJSON?.('reading','charStats',{}) || {}).length + ' kana stats',
+        incoming: countObj(readingKeys.charStats) + ' kana stats',
+        willImport: modeWillImport(readingKeys)
+      },
+      {
+        name:'writing',
+        label:'Writing Practice',
+        current: Object.keys(Store?.readModeJSON?.('writing','charStats',{}) || {}).length + ' kana stats',
+        incoming: countObj(writingKeys.charStats) + ' kana stats',
+        willImport: modeWillImport(writingKeys)
+      },
+      {
+        name:'readingTests',
+        label:'Reading Test Results',
+        current: readArrayFromLocal(K.readingTestResults || 'testModeResults').length + ' reading tests',
+        incoming: maxArrayCount(legacy.readingTests).toString() + ' reading tests',
+        willImport: legacy.readingTests.some(has)
+      },
+      {
+        name:'writingTests',
+        label:'Writing Test Results',
+        current: readArrayFromLocal(K.writingTestResults || 'writingTestModeResults').length + ' writing tests',
+        incoming: maxArrayCount(legacy.writingTests).toString() + ' writing tests',
+        willImport: legacy.writingTests.some(has)
+      },
+      {
+        name:'wordBank',
+        label:'Word Bank',
+        current: readArrayFromLocal(K.wordBank || 'kanaWordBank').length + ' word bank items',
+        incoming: readArray(K.wordBank || 'kanaWordBank').length + ' word bank items',
+        willImport: has(K.wordBank || 'kanaWordBank')
+      }
     ].map((section) => ({ ...section, action: section.willImport ? 'Will replace from backup' : 'Will keep current data' }));
     return { exportedAt: Date.parse(parsed?.exportedAt || '') || 0, sections };
   }
 
   function readArrayFromLocal(key){
-    try { const value = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(value) ? value : []; }
+    try { const value = window.ModeAtlasStorage?.json?.(key, []) ?? []; return Array.isArray(value) ? value : []; }
     catch { return []; }
   }
 
@@ -115,19 +183,42 @@
     modal = document.createElement('div');
     modal.id = 'maImportConfirmModal';
     modal.className = 'ma-import-confirm-backdrop';
-    modal.innerHTML = '<div class="ma-import-confirm-card" role="dialog" aria-modal="true" aria-labelledby="maImportConfirmTitle">' +
-      '<div class="ma-import-confirm-head">' +
-        '<div><div class="ma-import-confirm-kicker">Save import</div><h2 id="maImportConfirmTitle">Review imported save</h2></div>' +
-        '<button class="ma-import-confirm-x" type="button" data-ma-import-cancel aria-label="Cancel import">×</button>' +
-      '</div>' +
-      '<p class="ma-import-confirm-copy">Manual imports use the selected backup for any section that contains real data. Empty backup sections will not erase useful current data.</p>' +
-      '<div class="ma-import-confirm-meta" data-ma-import-meta></div>' +
-      '<div class="ma-import-confirm-table" data-ma-import-table></div>' +
-      '<div class="ma-import-confirm-actions">' +
-        '<button type="button" class="ma-import-confirm-button" data-ma-import-cancel>Cancel</button>' +
-        '<button type="button" class="ma-import-confirm-button ma-primary" data-ma-import-continue>Continue import</button>' +
-      '</div>' +
-    '</div>';
+    const card = createImportEl('div', 'ma-import-confirm-card');
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-labelledby', 'maImportConfirmTitle');
+
+    const head = createImportEl('div', 'ma-import-confirm-head');
+    const titleWrap = document.createElement('div');
+    titleWrap.append(createImportEl('div', 'ma-import-confirm-kicker', 'Save import'));
+    const title = createImportEl('h2', '', 'Review imported save');
+    title.id = 'maImportConfirmTitle';
+    titleWrap.append(title);
+
+    const closeBtn = createImportEl('button', 'ma-import-confirm-x', '×');
+    closeBtn.type = 'button';
+    closeBtn.dataset.maImportCancel = '';
+    closeBtn.setAttribute('aria-label', 'Cancel import');
+    head.append(titleWrap, closeBtn);
+
+    const copy = createImportEl('p', 'ma-import-confirm-copy', 'Manual imports use the selected backup for any section that contains real data. Empty backup sections will not erase useful current data.');
+
+    const meta = createImportEl('div', 'ma-import-confirm-meta');
+    meta.dataset.maImportMeta = '';
+    const table = createImportEl('div', 'ma-import-confirm-table');
+    table.dataset.maImportTable = '';
+
+    const actions = createImportEl('div', 'ma-import-confirm-actions');
+    const cancel = createImportEl('button', 'ma-import-confirm-button', 'Cancel');
+    cancel.type = 'button';
+    cancel.dataset.maImportCancel = '';
+    const cont = createImportEl('button', 'ma-import-confirm-button ma-primary', 'Continue import');
+    cont.type = 'button';
+    cont.dataset.maImportContinue = '';
+    actions.append(cancel, cont);
+
+    card.append(head, copy, meta, table, actions);
+    modal.replaceChildren(card);
     document.body.appendChild(modal);
     return modal;
   }
@@ -146,15 +237,33 @@
     const meta = modal.querySelector('[data-ma-import-meta]');
     const table = modal.querySelector('[data-ma-import-table]');
     const importing = (preview.sections || []).filter((section) => section.willImport).length;
-    meta.innerHTML = '<span>Backup exported: <strong>' + escapeHtml(formatImportDate(preview.exportedAt)) + '</strong></span>' +
-      '<span>Sections to import: <strong>' + importing + '</strong></span>';
-    table.innerHTML = '<div class="ma-import-confirm-row head"><span>Section</span><span>Current loaded</span><span>Imported save</span><span>Action</span></div>' +
-      (preview.sections || []).map((section) => '<div class="ma-import-confirm-row">' +
-        '<span><strong>' + escapeHtml(section.label) + '</strong></span>' +
-        '<span>' + escapeHtml(section.current) + '</span>' +
-        '<span>' + escapeHtml(section.incoming) + '</span>' +
-        '<span class="' + (section.willImport ? 'will-import' : 'will-keep') + '">' + escapeHtml(section.action) + '</span>' +
-      '</div>').join('');
+    meta.replaceChildren();
+    appendStrongLine(meta, 'Backup exported', formatImportDate(preview.exportedAt));
+    appendStrongLine(meta, 'Sections to import', importing);
+
+    const head = createImportEl('div', 'ma-import-confirm-row head');
+    ['Section', 'Current loaded', 'Imported save', 'Action'].forEach(label => head.append(createImportEl('span', '', label)));
+
+    const rows = (preview.sections || []).map((section) => {
+      const row = createImportEl('div', 'ma-import-confirm-row');
+
+      const label = document.createElement('span');
+      const strong = document.createElement('strong');
+      strong.textContent = String(section.label || '');
+      label.append(strong);
+
+      row.append(
+        label,
+        createImportEl('span', '', section.current || ''),
+        createImportEl('span', '', section.incoming || '')
+      );
+
+      const action = createImportEl('span', section.willImport ? 'will-import' : 'will-keep', section.action || '');
+      row.append(action);
+      return row;
+    });
+
+    table.replaceChildren(head, ...rows);
     modal.classList.add('open');
     return new Promise((resolve) => {
       const continueBtn = modal.querySelector('[data-ma-import-continue]');
@@ -230,7 +339,7 @@
 
   function statusFallback(){
     const user = window.KanaCloudSync?.getUser?.();
-    const lastSync = Number(localStorage.getItem('modeAtlasLastCloudSyncAt') || 0);
+    const lastSync = window.ModeAtlasStorage?.number?.('modeAtlasLastCloudSyncAt', 0) ?? Number(localStorage.getItem('modeAtlasLastCloudSyncAt') || 0);
     if (!user) return { tone: 'local', text: 'Local saving · log in for cloud save' };
     if (navigator.onLine === false) return { tone: 'warning', text: 'No cloud access · last sync ' + (lastSync ? new Date(lastSync).toLocaleString([], { hour:'numeric', minute:'2-digit', day:'numeric', month:'numeric', year:'2-digit' }) : 'never') };
     return { tone: 'ok', text: 'Cloud save synced' };
@@ -277,16 +386,17 @@
 
   function boot(){
     rebuildSaveSections();
-    setTimeout(rebuildSaveSections, 300);
-    setTimeout(rebuildSaveSections, 1200);
-    setTimeout(refreshSyncPills, 1800);
+    window.ModeAtlasLifecycle?.requestUiRefresh?.('import-export-boot');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.addEventListener('kanaCloudSyncStatusChanged', refreshSyncPills);
-  window.addEventListener('online', refreshSyncPills);
-  window.addEventListener('offline', refreshSyncPills);
-  setInterval(refreshSyncPills, 30000);
+  document.addEventListener('ma:ui-refresh', rebuildSaveSections);
+  window.addEventListener('kanaCloudSyncStatusChanged', () => window.ModeAtlasLifecycle?.requestUiRefresh?.('cloud-sync-status'));
+  window.addEventListener('online', () => window.ModeAtlasLifecycle?.requestUiRefresh?.('online'));
+  window.addEventListener('offline', () => window.ModeAtlasLifecycle?.requestUiRefresh?.('offline'));
+  window.addEventListener('focus', () => window.ModeAtlasLifecycle?.requestUiRefresh?.('focus'));
+  window.addEventListener('pageshow', () => window.ModeAtlasLifecycle?.requestUiRefresh?.('pageshow'));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) window.ModeAtlasLifecycle?.requestUiRefresh?.('visible'); });
   // Profile drawers are built during initial page load; avoid a document-wide observer here, because status text updates can retrigger it continuously.
 })();

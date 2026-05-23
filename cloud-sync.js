@@ -40,46 +40,52 @@ const DOC_PATH = ['users', null, 'appData', 'kanaTrainer'];
 const LOCAL_IMPORT_GUARD_KEY = 'modeAtlasLocalImportGuardUntil';
 let provider = null;
 
+const STORAGE = window.ModeAtlasStorage || {};
+const STORAGE_KEYS = STORAGE.KEYS || {};
+const STORAGE_COMPAT_KEYS = STORAGE.COMPAT_KEYS || {};
+const keyOr = (name, fallback) => STORAGE_KEYS[name] || fallback;
+const compatList = (name, fallback) => Array.isArray(STORAGE_COMPAT_KEYS[name]) ? STORAGE_COMPAT_KEYS[name] : fallback;
+
 const SECTION_DEFS = {
   reading: {
     updatedAtKey: 'cloudReadingUpdatedAt',
-    scalar: { highScore: 'highScore' },
+    scalar: { highScore: keyOr('readingHighScore', 'highScore') },
     json: {
-      settings: 'settings',
-      stats: 'charStats',
-      times: 'charTimes',
-      srs: 'charSrs',
-      scoreHistory: 'scoreHistory',
-      dailyChallengeHistory: 'dailyChallengeHistory'
+      settings: keyOr('readingSettings', 'settings'),
+      stats: keyOr('readingCharStats', 'charStats'),
+      times: keyOr('readingCharTimes', 'charTimes'),
+      srs: keyOr('readingSrs', 'charSrs'),
+      scoreHistory: keyOr('readingScoreHistory', 'scoreHistory'),
+      dailyChallengeHistory: keyOr('readingDailyHistory', 'dailyChallengeHistory')
     }
   },
   writing: {
     updatedAtKey: 'cloudWritingUpdatedAt',
-    scalar: { highScore: 'reverseHighScore' },
+    scalar: { highScore: keyOr('writingHighScore', 'reverseHighScore') },
     json: {
-      settings: 'reverseSettings',
-      stats: 'reverseCharStats',
-      times: 'reverseCharTimes',
-      srs: 'reverseCharSrs',
-      scoreHistory: 'reverseScoreHistory',
-      dailyChallengeHistory: 'reverseDailyChallengeHistory'
+      settings: keyOr('writingSettings', 'reverseSettings'),
+      stats: keyOr('writingCharStats', 'reverseCharStats'),
+      times: keyOr('writingCharTimes', 'reverseCharTimes'),
+      srs: keyOr('writingSrs', 'reverseCharSrs'),
+      scoreHistory: keyOr('writingScoreHistory', 'reverseScoreHistory'),
+      dailyChallengeHistory: keyOr('writingDailyHistory', 'reverseDailyChallengeHistory')
     }
   },
   readingTests: {
-    updatedAtKey: 'testModeResultsUpdatedAt',
+    updatedAtKey: keyOr('testResultsUpdatedAt', 'testModeResultsUpdatedAt'),
     scalar: {},
     json: {
-      primary: 'testModeResults',
+      primary: keyOr('readingTestResults', 'testModeResults'),
       backup: 'kanaTrainerTestModeResults',
-      altPrimary: 'readingTestModeResults',
+      altPrimary: keyOr('readingTestResultsBackup', 'readingTestModeResults'),
       altBackup: 'kanaTrainerReadingTestModeResults'
     }
   },
   writingTests: {
-    updatedAtKey: 'writingTestModeResultsUpdatedAt',
+    updatedAtKey: keyOr('writingTestResultsUpdatedAt', 'writingTestModeResultsUpdatedAt'),
     scalar: {},
     json: {
-      primary: 'writingTestModeResults',
+      primary: keyOr('writingTestResults', 'writingTestModeResults'),
       backup: 'kanaTrainerWritingTestModeResults'
     }
   },
@@ -87,10 +93,22 @@ const SECTION_DEFS = {
     updatedAtKey: 'kanaWordBankUpdatedAt',
     scalar: {},
     json: {
-      items: 'kanaWordBank'
+      items: keyOr('wordBank', 'kanaWordBank')
     }
   }
 };
+
+const READING_TEST_IMPORT_KEYS = compatList('readingTests', [
+  keyOr('readingTestResults', 'testModeResults'),
+  keyOr('readingTestResultsBackup', 'readingTestModeResults'),
+  'kanaTrainerTestModeResults',
+  'kanaTrainerReadingTestModeResults'
+]);
+const WRITING_TEST_IMPORT_KEYS = compatList('writingTests', [
+  keyOr('writingTestResults', 'writingTestModeResults'),
+  keyOr('writingTestResultsBackup', 'reverseTestModeResults'),
+  'kanaTrainerWritingTestModeResults'
+]);
 
 const SECTION_TIMESTAMP_KEYS = {
   reading: 'settingsUpdatedAt',
@@ -106,15 +124,61 @@ const SECTION_EXTRA_TIMESTAMP_KEYS = {
   writingTests: [],
   wordBank: []
 };
+
+function storeGet(key, fallback = '') {
+  try {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function storeSet(key, value) {
+  try {
+    const store = window.ModeAtlasStorage;
+    return store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  } catch {
+    return false;
+  }
+}
+
+function storeRemove(key) {
+  try {
+    const store = window.ModeAtlasStorage;
+    return store?.remove?.(key) ?? localStorage.removeItem(key);
+  } catch {
+    return false;
+  }
+}
+
+function storeJSON(key, fallback) {
+  try {
+    const store = window.ModeAtlasStorage;
+    if (store?.json) return store.json(key, fallback);
+    return storeJSON(key, fallback);
+  } catch {
+    return fallback;
+  }
+}
+
+function storeSetJSON(key, value) {
+  try {
+    const store = window.ModeAtlasStorage;
+    return store?.setJSON?.(key, value) ?? storeSetJSON(key, value);
+  } catch {
+    return false;
+  }
+}
 function setSectionTimestampAliases(sectionName, updatedAt) {
   try {
     const ts = String(normalizeTimestamp(updatedAt) || Date.now());
     const primary = SECTION_TIMESTAMP_KEYS[sectionName];
-    if (primary) localStorage.setItem(primary, ts);
-    (SECTION_EXTRA_TIMESTAMP_KEYS[sectionName] || []).forEach((key) => { if (!localStorage.getItem(key)) localStorage.setItem(key, ts); });
+    if (primary) storeSet(primary, ts);
+    (SECTION_EXTRA_TIMESTAMP_KEYS[sectionName] || []).forEach((key) => { if (!storeGet(key, '')) storeSet(key, ts); });
     const meta = readJSON('modeAtlasSectionTimestamps', {});
     if (primary) meta[primary] = normalizeTimestamp(ts);
-    localStorage.setItem('modeAtlasSectionTimestamps', JSON.stringify(meta));
+    storeSetJSON('modeAtlasSectionTimestamps', meta);
   } catch {}
 }
 function ensureResultIdsInSectionData(sectionName, data) {
@@ -141,19 +205,18 @@ function ensureResultIdsInSectionData(sectionName, data) {
 
 function readJSON(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
+    return storeJSON(key, fallback);
   } catch {
     return fallback;
   }
 }
 
 function writeJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  storeSetJSON(key, value);
 }
 
 function readNumber(key) {
-  const raw = localStorage.getItem(key);
+  const raw = storeGet(key, '0');
   const num = Number(raw || 0);
   return Number.isFinite(num) ? num : 0;
 }
@@ -222,20 +285,20 @@ function normalizeImportedTestList(list, modeHint = '') {
 function normalizeTestSectionPayload(sectionName, payload) {
   const data = coerceStorageMap(payload);
   if (sectionName === 'readingTests') {
-    const primary = firstArrayFromData(data, ['primary', 'testModeResults', 'readingTestModeResults'], 'reading')
+    const primary = firstArrayFromData(data, ['primary', SECTION_DEFS.readingTests.json.primary, SECTION_DEFS.readingTests.json.altPrimary], 'reading')
       .filter((item) => (item.mode || 'reading') === 'reading');
     const backup = firstArrayFromData(data, ['backup', 'kanaTrainerTestModeResults'], 'reading')
       .filter((item) => (item.mode || 'reading') === 'reading');
-    const altPrimary = firstArrayFromData(data, ['altPrimary', 'readingTestModeResults'], 'reading')
+    const altPrimary = firstArrayFromData(data, ['altPrimary', SECTION_DEFS.readingTests.json.altPrimary], 'reading')
       .filter((item) => (item.mode || 'reading') === 'reading');
     const altBackup = firstArrayFromData(data, ['altBackup', 'kanaTrainerReadingTestModeResults'], 'reading')
       .filter((item) => (item.mode || 'reading') === 'reading');
     return { ...data, primary, backup, altPrimary, altBackup };
   }
   if (sectionName === 'writingTests') {
-    const primary = firstArrayFromData(data, ['primary', 'writingTestModeResults', 'reverseTestModeResults'], 'writing')
+    const primary = firstArrayFromData(data, ['primary', SECTION_DEFS.writingTests.json.primary, keyOr('writingTestResultsBackup', 'reverseTestModeResults')], 'writing')
       .filter((item) => item.mode === 'writing');
-    const backup = firstArrayFromData(data, ['backup', 'kanaTrainerWritingTestModeResults'], 'writing')
+    const backup = firstArrayFromData(data, ['backup', SECTION_DEFS.writingTests.json.backup], 'writing')
       .filter((item) => item.mode === 'writing');
     return { ...data, primary, backup };
   }
@@ -246,13 +309,13 @@ function snapshotSection(sectionName) {
   const def = SECTION_DEFS[sectionName];
   const data = {};
   Object.entries(def.scalar).forEach(([field, key]) => {
-    data[field] = localStorage.getItem(key) || '0';
+    data[field] = storeGet(key, '0') || '0';
   });
   Object.entries(def.json).forEach(([field, key]) => {
     data[field] = readJSON(key, field === 'items' ? [] : field.includes('History') || field === 'settings' || field === 'stats' || field === 'times' || field === 'srs' ? {} : []);
   });
   return {
-    updatedAt: normalizeTimestamp(localStorage.getItem(def.updatedAtKey)),
+    updatedAt: normalizeTimestamp(storeGet(def.updatedAtKey, '0')),
     data
   };
 }
@@ -261,7 +324,7 @@ function snapshotSectionFixed(sectionName) {
   const def = SECTION_DEFS[sectionName];
   const data = {};
   Object.entries(def.scalar).forEach(([field, key]) => {
-    data[field] = localStorage.getItem(key) || '0';
+    data[field] = storeGet(key, '0') || '0';
   });
   Object.entries(def.json).forEach(([field, key]) => {
     let fallback = {};
@@ -270,7 +333,7 @@ function snapshotSectionFixed(sectionName) {
     data[field] = readJSON(key, fallback);
   });
   return {
-    updatedAt: normalizeTimestamp(localStorage.getItem(def.updatedAtKey)) || normalizeTimestamp(localStorage.getItem(SECTION_TIMESTAMP_KEYS[sectionName])),
+    updatedAt: normalizeTimestamp(storeGet(def.updatedAtKey, '0')) || normalizeTimestamp(storeGet(SECTION_TIMESTAMP_KEYS[sectionName], '0')),
     data: ensureResultIdsInSectionData(sectionName, data)
   };
 }
@@ -295,30 +358,30 @@ function normalizeLegacyStorageMap(input) {
   const mapLegacyKey = (from, to) => {
     if (data[from] !== undefined && data[to] === undefined) data[to] = data[from];
   };
-  mapLegacyKey('stats', 'charStats');
-  mapLegacyKey('times', 'charTimes');
-  mapLegacyKey('srs', 'charSrs');
-  mapLegacyKey('reverseStats', 'reverseCharStats');
-  mapLegacyKey('reverseTimes', 'reverseCharTimes');
-  mapLegacyKey('reverseSrs', 'reverseCharSrs');
-  mapLegacyKey('writingStats', 'reverseCharStats');
-  mapLegacyKey('writingTimes', 'reverseCharTimes');
-  mapLegacyKey('writingSrs', 'reverseCharSrs');
-  mapLegacyKey('wordBank', 'kanaWordBank');
-  mapLegacyKey('reverseTestModeResults', 'writingTestModeResults');
+  mapLegacyKey('stats', keyOr('readingCharStats', 'charStats'));
+  mapLegacyKey('times', keyOr('readingCharTimes', 'charTimes'));
+  mapLegacyKey('srs', keyOr('readingSrs', 'charSrs'));
+  mapLegacyKey('reverseStats', keyOr('writingCharStats', 'reverseCharStats'));
+  mapLegacyKey('reverseTimes', keyOr('writingCharTimes', 'reverseCharTimes'));
+  mapLegacyKey('reverseSrs', keyOr('writingSrs', 'reverseCharSrs'));
+  mapLegacyKey('writingStats', keyOr('writingCharStats', 'reverseCharStats'));
+  mapLegacyKey('writingTimes', keyOr('writingCharTimes', 'reverseCharTimes'));
+  mapLegacyKey('writingSrs', keyOr('writingSrs', 'reverseCharSrs'));
+  mapLegacyKey('wordBank', keyOr('wordBank', 'kanaWordBank'));
+  mapLegacyKey(keyOr('writingTestResultsBackup', 'reverseTestModeResults'), keyOr('writingTestResults', 'writingTestModeResults'));
   try {
-    ['testModeResults','kanaTrainerTestModeResults','readingTestModeResults','kanaTrainerReadingTestModeResults'].forEach((key) => {
+    READING_TEST_IMPORT_KEYS.forEach((key) => {
       const list = readJSONFromMap(data, key, null);
       if (Array.isArray(list)) data[key] = JSON.stringify(normalizeImportedTestList(list, 'reading'));
     });
-    ['writingTestModeResults','kanaTrainerWritingTestModeResults','reverseTestModeResults'].forEach((key) => {
+    WRITING_TEST_IMPORT_KEYS.forEach((key) => {
       const list = readJSONFromMap(data, key, null);
       if (Array.isArray(list)) data[key] = JSON.stringify(normalizeImportedTestList(list, 'writing'));
     });
-    const tests = readJSONFromMap(data, 'testModeResults', null);
-    if (Array.isArray(tests) && data.readingTestModeResults === undefined && data.writingTestModeResults === undefined) {
-      data.readingTestModeResults = JSON.stringify(tests.filter((item) => (item && (item.mode || 'reading')) === 'reading'));
-      data.writingTestModeResults = JSON.stringify(tests.filter((item) => item && item.mode === 'writing'));
+    const tests = readJSONFromMap(data, keyOr('readingTestResults', 'testModeResults'), null);
+    if (Array.isArray(tests) && data[keyOr('readingTestResultsBackup', 'readingTestModeResults')] === undefined && data[keyOr('writingTestResults', 'writingTestModeResults')] === undefined) {
+      data[keyOr('readingTestResultsBackup', 'readingTestModeResults')] = JSON.stringify(tests.filter((item) => (item && (item.mode || 'reading')) === 'reading'));
+      data[keyOr('writingTestResults', 'writingTestModeResults')] = JSON.stringify(tests.filter((item) => item && item.mode === 'writing'));
     }
   } catch {}
   return data;
@@ -430,17 +493,12 @@ function collectImportedTestResults(obj) {
   };
   collectImportTestSources(obj).forEach((source) => {
     [
-      ['testModeResults', 'reading'],
-      ['readingTestModeResults', 'reading'],
-      ['kanaTrainerTestModeResults', 'reading'],
-      ['kanaTrainerReadingTestModeResults', 'reading'],
+      ...READING_TEST_IMPORT_KEYS.map((key) => [key, 'reading']),
       ['primary', 'reading'],
       ['altPrimary', 'reading'],
       ['backup', 'reading'],
       ['altBackup', 'reading'],
-      ['writingTestModeResults', 'writing'],
-      ['reverseTestModeResults', 'writing'],
-      ['kanaTrainerWritingTestModeResults', 'writing'],
+      ...WRITING_TEST_IMPORT_KEYS.map((key) => [key, 'writing']),
       ['primary', 'writing'],
       ['backup', 'writing']
     ].forEach(([key, mode]) => {
@@ -498,11 +556,11 @@ function buildLocalSnapshot() {
     version: 'cloud-v2-restore-guard',
     updatedAt: now,
     sectionTimestamps: {
-      settingsUpdatedAt: normalizeTimestamp(localStorage.getItem('settingsUpdatedAt')),
-      resultsUpdatedAt: normalizeTimestamp(localStorage.getItem('resultsUpdatedAt')),
-      srsUpdatedAt: normalizeTimestamp(localStorage.getItem('srsUpdatedAt')),
-      dailyUpdatedAt: normalizeTimestamp(localStorage.getItem('dailyUpdatedAt')),
-      profileUpdatedAt: normalizeTimestamp(localStorage.getItem('profileUpdatedAt'))
+      settingsUpdatedAt: normalizeTimestamp(storeGet('settingsUpdatedAt', '0')),
+      resultsUpdatedAt: normalizeTimestamp(storeGet('resultsUpdatedAt', '0')),
+      srsUpdatedAt: normalizeTimestamp(storeGet('srsUpdatedAt', '0')),
+      dailyUpdatedAt: normalizeTimestamp(storeGet('dailyUpdatedAt', '0')),
+      profileUpdatedAt: normalizeTimestamp(storeGet('profileUpdatedAt', '0'))
     },
     sections
   };
@@ -531,13 +589,13 @@ function writeSectionToLocal(sectionName, payload, updatedAt) {
   const def = SECTION_DEFS[sectionName];
   const data = ensureResultIdsInSectionData(sectionName, normalizeTestSectionPayload(sectionName, payload || {}));
   Object.entries(def.scalar).forEach(([field, key]) => {
-    localStorage.setItem(key, String(data[field] ?? '0'));
+    storeSet(key, String(data[field] ?? '0'));
   });
   Object.entries(def.json).forEach(([field, key]) => {
     const fallback = sectionName === 'wordBank' || sectionName === 'readingTests' || sectionName === 'writingTests' ? [] : {};
     writeJSON(key, data[field] ?? fallback);
   });
-  localStorage.setItem(def.updatedAtKey, String(normalizeTimestamp(updatedAt)));
+  storeSet(def.updatedAtKey, String(normalizeTimestamp(updatedAt)));
   setSectionTimestampAliases(sectionName, updatedAt);
 }
 
@@ -567,16 +625,16 @@ function deepHasProgress(value) {
 }
 
 function hasLocalImportGuard() {
-  const until = Number(localStorage.getItem(LOCAL_IMPORT_GUARD_KEY) || 0);
+  const until = Number(storeGet(LOCAL_IMPORT_GUARD_KEY, '0') || 0);
   return Number.isFinite(until) && Date.now() < until;
 }
 
 function beginLocalImport(ms = 10 * 60 * 1000) {
-  localStorage.setItem(LOCAL_IMPORT_GUARD_KEY, String(Date.now() + ms));
+  storeSet(LOCAL_IMPORT_GUARD_KEY, String(Date.now() + ms));
 }
 
 function clearLocalImportGuard() {
-  localStorage.removeItem(LOCAL_IMPORT_GUARD_KEY);
+  storeRemove(LOCAL_IMPORT_GUARD_KEY);
 }
 
 function sectionHasMeaningfulData(sectionName, data = {}) {
@@ -602,7 +660,7 @@ function mergeCloudIntoLocal(snapshot, options = {}) {
   Object.keys(SECTION_DEFS).forEach((name) => {
     const remoteSection = snapshot.sections[name];
     if (!remoteSection) return;
-    const localUpdatedAt = normalizeTimestamp(localStorage.getItem(SECTION_DEFS[name].updatedAtKey));
+    const localUpdatedAt = normalizeTimestamp(storeGet(SECTION_DEFS[name].updatedAtKey, '0'));
     const remoteUpdatedAt = normalizeTimestamp(remoteSection.updatedAt);
     const remoteData = remoteSection.data || {};
     const localData = getLocalSectionData(name);
@@ -679,14 +737,14 @@ function formatDateTime(ts) {
 function setCloudState(ok, message = '') {
   try {
     if (ok) {
-      localStorage.setItem(LAST_CLOUD_SYNC_KEY, String(Date.now()));
-      localStorage.setItem(CLOUD_STATE_KEY, 'ok');
-      localStorage.removeItem(CLOUD_ERROR_KEY);
-      localStorage.removeItem(CLOUD_ERROR_MESSAGE_KEY);
+      storeSet(LAST_CLOUD_SYNC_KEY, String(Date.now()));
+      storeSet(CLOUD_STATE_KEY, 'ok');
+      storeRemove(CLOUD_ERROR_KEY);
+      storeRemove(CLOUD_ERROR_MESSAGE_KEY);
     } else {
-      localStorage.setItem(CLOUD_STATE_KEY, 'offline');
-      localStorage.setItem(CLOUD_ERROR_KEY, String(Date.now()));
-      if (message) localStorage.setItem(CLOUD_ERROR_MESSAGE_KEY, String(message).slice(0, 180));
+      storeSet(CLOUD_STATE_KEY, 'offline');
+      storeSet(CLOUD_ERROR_KEY, String(Date.now()));
+      if (message) storeSet(CLOUD_ERROR_MESSAGE_KEY, String(message).slice(0, 180));
     }
   } catch {}
   emitStatus();
@@ -695,9 +753,9 @@ function setCloudState(ok, message = '') {
 
 function getSyncStatus() {
   const user = currentUser;
-  const lastSync = normalizeTimestamp(localStorage.getItem(LAST_CLOUD_SYNC_KEY));
+  const lastSync = normalizeTimestamp(storeGet(LAST_CLOUD_SYNC_KEY, '0'));
   const online = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
-  const state = localStorage.getItem(CLOUD_STATE_KEY) || '';
+  const state = storeGet(CLOUD_STATE_KEY, '') || '';
   if (!CONFIG_READY) {
     return { state: 'local', tone: 'neutral', text: 'Progress saves on this device', lastSync, user };
   }
@@ -983,7 +1041,7 @@ function markSectionUpdated(sectionName) {
   const def = SECTION_DEFS[sectionName];
   if (!def) return;
   const now = Date.now();
-  localStorage.setItem(def.updatedAtKey, String(now));
+  storeSet(def.updatedAtKey, String(now));
   setSectionTimestampAliases(sectionName, now);
 }
 
@@ -1004,7 +1062,7 @@ function collectExportStorage() {
     }
   }
   Object.values(SECTION_DEFS).forEach((def) => {
-    if (def.updatedAtKey && localStorage.getItem(def.updatedAtKey) !== null) data[def.updatedAtKey] = localStorage.getItem(def.updatedAtKey);
+    if (def.updatedAtKey && storeGet(def.updatedAtKey, null) !== null) data[def.updatedAtKey] = storeGet(def.updatedAtKey, '');
   });
   return data;
 }

@@ -19,6 +19,8 @@
   function json(key,fallback){ try{return window.ModeAtlasStorage?.json?.(key,fallback) ?? fallback;}catch{return fallback;} }
   function number(key,fallback=0){ try{return window.ModeAtlasStorage?.number?.(key,fallback) ?? fallback;}catch{return fallback;} }
   function obj(key){ const v=json(key,{}); return v&&typeof v==='object'&&!Array.isArray(v)?v:{}; }
+  function modeObj(mode, name){ try{ const v=window.ModeAtlasStorage?.readModeJSON?.(mode,name,{}); return v&&typeof v==='object'&&!Array.isArray(v)?v:{}; }catch{return {}; } }
+  function modeNumber(mode, name, fallback=0){ try{return window.ModeAtlasStorage?.readModeNumber?.(mode,name,fallback) ?? fallback;}catch{return fallback;} }
   function arr(key){ const v=json(key,[]); return Array.isArray(v)?v:[]; }
   function countKeys(o){ return o&&typeof o==='object'?Object.keys(o).length:0; }
   function statTotals(stats){ let c=0,w=0; Object.values(stats||{}).forEach(s=>{ if(s&&typeof s==='object'){ c+=Number(s.correct||s.right||0); w+=Number(s.wrong||s.incorrect||0); } }); return {c,w,t:c+w,acc:c+w?Math.round((c/(c+w))*100):0}; }
@@ -43,22 +45,22 @@
     writingKeys.forEach(key=>arr(key).forEach(item=>{const n=normalizeResultForCount(item,'writing'); if(n) seen.add('writing|'+n.sig);}));
     return seen.size;
   }
-  function charCorrect(ch){ const r=obj('charStats')[ch]||{}, w=obj('reverseCharStats')[ch]||{}; return Number(r.correct||r.right||0)+Number(w.correct||w.right||0); }
-  function charWrong(ch){ const r=obj('charStats')[ch]||{}, w=obj('reverseCharStats')[ch]||{}; return Number(r.wrong||r.incorrect||0)+Number(w.wrong||w.incorrect||0); }
-  function charAvg(ch){ const rt=obj('charTimes')[ch], wt=obj('reverseCharTimes')[ch]; const vals=[]; [rt,wt].forEach(v=>{ if(typeof v==='number') vals.push(v); else if(v&&typeof v==='object'){ const n=Number(v.avg||v.average||v.time||0); if(n) vals.push(n); } }); return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0; }
-  function masteryLabel(ch){ const c=charCorrect(ch), w=charWrong(ch), t=c+w, avg=charAvg(ch); if(!t) return 'New'; if(c>=20 && c/(t||1)>=.9 && (!avg||avg<=2000)) return 'Mastered'; if(c>=8 && c/(t||1)>=.75) return 'Reviewing'; return 'Learning'; }
+  function charCorrect(ch){ const r=modeObj('reading','charStats')[ch]||{}, w=modeObj('writing','charStats')[ch]||{}; return Number(r.correct||r.right||0)+Number(w.correct||w.right||0); }
+  function charWrong(ch){ const r=modeObj('reading','charStats')[ch]||{}, w=modeObj('writing','charStats')[ch]||{}; return Number(r.wrong||r.incorrect||0)+Number(w.wrong||w.incorrect||0); }
+  function charAvg(ch){ const rt=obj('charTimes')[ch], wt=obj('reverseCharTimes')[ch]; const vals=[]; [rt,wt].forEach(v=>{ let n=0; if(typeof v==='number') n=Number(v); else if(v&&typeof v==='object') n=Number(v.avg||v.average||v.time||0); if(n) vals.push(n<30?n*1000:n); }); return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0; }
+  function masteryLabel(ch){ const c=charCorrect(ch), w=charWrong(ch), t=c+w, avg=charAvg(ch), acc=t?c/t:0; if(!t) return 'New'; if(c>=50 && acc>=.95 && avg>0 && avg<=1000) return 'Mastered'; if(c>=10 && acc>=.85 && (!avg || avg<=2500)) return 'Reviewing'; return 'Learning'; }
   function masteryClass(label){ return String(label||'').toLowerCase(); }
   function masteryCounts(chars=ALL){ const out={New:0,Learning:0,Reviewing:0,Mastered:0}; chars.forEach(ch=>{ out[masteryLabel(ch)]++; }); return out; }
   function bestWeak(chars=ALL){ const rows=[]; [...new Set(chars)].forEach(ch=>{ const c=charCorrect(ch), w=charWrong(ch), avg=charAvg(ch), t=c+w; if(t) rows.push({ch,c,w,t,avg,score:(c/(t||1))-(w*.05)-(avg?Math.min(avg/7000,.5):0)}); }); return rows.sort((a,b)=>a.score-b.score).slice(0,4); }
   function formatMs(ms){ return !ms?'—':ms<1000?Math.round(ms)+'ms':(ms/1000).toFixed(1)+'s'; }
   function kanaStats(){
-    const readingStats=obj('charStats'), writingStats=obj('reverseCharStats');
+    const readingStats=modeObj('reading','charStats'), writingStats=modeObj('writing','charStats');
     const readingDaily=obj('dailyChallengeHistory'), writingDaily=obj('reverseDailyChallengeHistory');
     const rw=difficult(readingStats,false), rb=difficult(readingStats,true), ww=difficult(writingStats,false), wb=difficult(writingStats,true);
     const rt=statTotals(readingStats), wt=statTotals(writingStats);
     return {
       readingAccuracy:rt.acc, writingAccuracy:wt.acc, readingAnswers:rt.t, writingAnswers:wt.t,
-      readingHigh:number('highScore',0), writingHigh:number('reverseHighScore',0),
+      readingHigh:modeNumber('reading','highScore',0), writingHigh:modeNumber('writing','highScore',0),
       readingKnown:countKeys(readingStats), writingKnown:countKeys(writingStats),
       readingWorst:rw?.kana||'—', readingBest:rb?.kana||'—', writingWorst:ww?.kana||'—', writingBest:wb?.kana||'—',
       readingTests:arr('testModeResults').length+arr('readingTestModeResults').length+arr('kanaTrainerReadingTestModeResults').length,

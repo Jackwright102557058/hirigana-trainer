@@ -26,10 +26,11 @@
   }
 
   function getMode(){
-    let value = localStorage.getItem(KEY);
+    const store = window.ModeAtlasStorage;
+    let value = store?.get?.(KEY) ?? localStorage.getItem(KEY);
     if(!value){
       for(const legacyKey of LEGACY_KEYS){
-        value = localStorage.getItem(legacyKey);
+        value = store?.get?.(legacyKey) ?? localStorage.getItem(legacyKey);
         if(value) break;
       }
     }
@@ -320,9 +321,9 @@
 
   function setMode(value){
     const mode = normaliseMode(value);
-    localStorage.setItem(KEY, mode);
+    store?.set?.(KEY, mode) ?? localStorage.setItem(KEY, mode);
     for(const legacyKey of LEGACY_KEYS){
-      try{ localStorage.setItem(legacyKey, mode); }catch(err){}
+      try{ store?.set?.(legacyKey, mode) ?? localStorage.setItem(legacyKey, mode); }catch(err){}
     }
     refreshSoundControls();
     window.dispatchEvent(new CustomEvent('modeAtlasSoundChanged', { detail: { mode } }));
@@ -503,14 +504,6 @@
       }
     }
 
-    function scheduleNavigation(url){
-      if(!url || window.__modeAtlasSoundNavigating) return;
-      window.__modeAtlasSoundNavigating = true;
-      setTimeout(() => {
-        try{ window.location.href = url.href; }
-        catch(err){ window.location.assign(url.href); }
-      }, 115);
-    }
     document.addEventListener('pointerdown', event => {
       const readyBeforePress = !!(ctx && ctx.state === 'running' && audioPrimed);
       unlock();
@@ -565,12 +558,10 @@
       const clickable = clickableFromEvent(event);
       const navUrl = sameWindowNavLink(clickable);
       if(navUrl && isPlainPrimaryActivation(event)){
-        event.preventDefault();
         const last = recentPointerSound.get(clickable) || 0;
         if(Date.now() - last > 180){
           play('nav', { cooldown: 0, variant: elementVariant(clickable, 4), boost: 1.08 });
         }
-        scheduleNavigation(navUrl);
         return;
       }
 

@@ -4,7 +4,10 @@ const identityAvatar = document.getElementById('identityAvatar');
 function updateTopProfileDot() {
   const user = window.KanaCloudSync?.getUser?.();
   if (user?.photoURL) {
-    topProfileDot.innerHTML = `<img src="${user.photoURL}" alt="" />`;
+    const image = document.createElement('img');
+    image.src = user.photoURL;
+    image.alt = '';
+    topProfileDot.replaceChildren(image);
   } else {
     topProfileDot.textContent = user?.displayName?.trim()?.[0]?.toUpperCase() || 'M';
   }
@@ -22,8 +25,8 @@ try {
     });
 
     window.KanaCloudSync.ready.then(updateTopProfileDot);
-    document.getElementById('identitySignInBtn')?.addEventListener('click', () => setTimeout(updateTopProfileDot, 900));
-    document.getElementById('identitySignOutBtn')?.addEventListener('click', () => setTimeout(updateTopProfileDot, 300));
+    document.getElementById('identitySignInBtn')?.addEventListener('click', () => window.ModeAtlasLifecycle?.requestUiRefresh?.('home-sign-in'));
+    document.getElementById('identitySignOutBtn')?.addEventListener('click', () => window.ModeAtlasLifecycle?.requestUiRefresh?.('home-sign-out'));
   }
 } catch (error) {
   console.warn('Cloud profile controls could not load.', error);

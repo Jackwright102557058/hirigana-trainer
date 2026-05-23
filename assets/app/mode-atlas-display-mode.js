@@ -5,6 +5,16 @@
   const VALID_MODES = new Set(['auto', 'desktop', 'tablet', 'phone']);
   let resizeTimer = 0;
 
+  function storeGet(key, fallback = '') {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+
+  function storeSet(key, value) {
+    const store = window.ModeAtlasStorage;
+    return store?.set?.(key, value) ?? localStorage.setItem(key, String(value));
+  }
+
   function normalizeMode(mode) {
     const value = String(mode || 'auto').toLowerCase();
     const normalized = LEGACY_ALIASES[value] || value;
@@ -12,15 +22,14 @@
   }
 
   function readStoredMode() {
-    const raw = window.ModeAtlasStorage?.get ? window.ModeAtlasStorage.get(STORAGE_KEY, 'auto') : (localStorage.getItem(STORAGE_KEY) || 'auto');
+    const raw = storeGet(STORAGE_KEY, 'auto') || 'auto';
     const normalized = normalizeMode(raw);
     if (raw && raw !== normalized && raw !== 'auto') writeStoredMode(normalized);
     return normalized;
   }
 
   function writeStoredMode(mode) {
-    if (window.ModeAtlasStorage?.set) window.ModeAtlasStorage.set(STORAGE_KEY, mode);
-    else localStorage.setItem(STORAGE_KEY, mode);
+    storeSet(STORAGE_KEY, mode);
   }
 
   function getMode() { return readStoredMode(); }
@@ -74,7 +83,7 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectDisplayControls);
   else injectDisplayControls();
   window.addEventListener('resize', onResize, { passive: true });
-  window.addEventListener('orientationchange', () => window.setTimeout(applyMode, 120));
-  setTimeout(injectDisplayControls, 300);
-  setTimeout(injectDisplayControls, 1200);
+  window.addEventListener('orientationchange', applyMode);
+  document.addEventListener('ma:ui-refresh', injectDisplayControls);
+  document.addEventListener('ma:trainer-ready', injectDisplayControls);
 })();

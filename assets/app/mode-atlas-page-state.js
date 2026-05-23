@@ -30,7 +30,7 @@
     const page = pageName();
     const map = { 'default.html': '/reading/', 'reverse.html': '/writing/', 'test.html': '/results/' };
     if (map[page]) {
-      try { localStorage.setItem(LAST_PAGE_KEY, map[page]); } catch {}
+      try { window.ModeAtlasStorage?.set?.(LAST_PAGE_KEY, map[page]); } catch {}
     }
   }
 
@@ -60,18 +60,41 @@
     });
   }
 
+  const lifecycleListeners = new Map();
+
+  function emitLifecycle(name, detail = {}) {
+    try {
+      document.dispatchEvent(new CustomEvent(`ma:${name}`, { detail }));
+    } catch {}
+  }
+
+  function onLifecycle(name, handler, options) {
+    if (typeof handler !== 'function') return () => {};
+    const eventName = `ma:${name}`;
+    document.addEventListener(eventName, handler, options);
+    if (!lifecycleListeners.has(eventName)) lifecycleListeners.set(eventName, new Set());
+    lifecycleListeners.get(eventName).add(handler);
+    return () => document.removeEventListener(eventName, handler, options);
+  }
+
+  function requestUiRefresh(source = 'unknown', detail = {}) {
+    emitLifecycle('ui-refresh', { source, ...detail });
+  }
+
   function boot(){
     setPageClass();
     rememberKanaPage();
     normalizeInputs();
     cleanDecorativeTextIcons();
+    emitLifecycle('page-state-ready', { page: pageName() });
   }
 
+  window.ModeAtlasLifecycle = Object.freeze({ emit: emitLifecycle, on: onLifecycle, requestUiRefresh });
   window.ModeAtlasPageState = { pageName, setPageClass, rememberKanaPage, normalizeInputs, cleanDecorativeTextIcons, refresh: boot };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
-  window.addEventListener('pageshow', () => setTimeout(boot, 50));
+  window.addEventListener('pageshow', boot);
 })();
 
 

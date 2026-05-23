@@ -120,5 +120,6 @@
     }
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureButtons); else ensureButtons();
-  setTimeout(ensureButtons, 600);
+  document.addEventListener('ma:ui-refresh', ensureButtons);
+  document.addEventListener('ma:trainer-ready', ensureButtons);
 })();

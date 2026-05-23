@@ -11,7 +11,7 @@
   }
 
   function getPreference(){
-    try { return localStorage.getItem(THEME_KEY) || 'dark'; }
+    try { return window.ModeAtlasStorage?.get?.(THEME_KEY, 'dark') || 'dark'; }
     catch(e) { return 'dark'; }
   }
 
@@ -51,7 +51,7 @@
 
   function set(pref, opts){
     pref = normalizePreference(pref);
-    try { localStorage.setItem(THEME_KEY, pref); } catch(e) {}
+    try { window.ModeAtlasStorage?.set?.(THEME_KEY, pref); } catch(e) {}
     apply();
     if (!opts || opts.toast !== false) {
       var label = pref === 'system' ? 'System' : pref.charAt(0).toUpperCase() + pref.slice(1);
@@ -83,6 +83,7 @@
     updateButtons: updateButtons
   };
 
+  window.addEventListener('modeAtlasSettingsMenuReady', updateButtons);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once: true });
   apply();
 })();

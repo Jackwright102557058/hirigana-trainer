@@ -7,7 +7,7 @@
     try {
       const store = window.ModeAtlasStorage;
       if (store?.get) return store.get(storageKey, '0') === '1';
-      return localStorage.getItem(storageKey) === '1';
+      return window.ModeAtlasStorage?.get?.(storageKey) === '1';
     } catch {
       return false;
     }
@@ -17,7 +17,7 @@
     try {
       const store = window.ModeAtlasStorage;
       if (store?.set) store.set(storageKey, hidden ? '1' : '0');
-      else localStorage.setItem(storageKey, hidden ? '1' : '0');
+      else window.ModeAtlasStorage?.set?.(storageKey, hidden ? '1' : '0');
     } catch {}
   }
 

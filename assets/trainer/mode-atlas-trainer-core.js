@@ -3,22 +3,23 @@
 
   function saveTrainerState(config){
     const cfg = config || {};
-    const prefix = cfg.prefix || "";
     const section = cfg.section || "reading";
-    const keyMap = cfg.keys || {};
-    const keyFor = (name, fallback) => keyMap[name] || fallback;
-    const highScoreKey = cfg.highScoreKey || keyFor("highScore", prefix ? `${prefix}HighScore` : "highScore");
+    const mode = cfg.mode || (section === "writing" ? "writing" : "reading");
+    const Store = window.ModeAtlasStorage;
     try { window.KanaCloudSync?.markSectionUpdated?.(section); } catch {}
-    const writeJson = (key, value) => {
-      if (!window.ModeAtlasStorage.setJSON(key, value)) console.warn("Mode Atlas save failed", key);
+
+    const writeJson = (name, value) => {
+      if (!Store.writeModeJSON(mode, name, value)) console.warn("Mode Atlas save failed", mode, name);
     };
-    writeJson(keyFor("settings", prefix ? `${prefix}Settings` : "settings"), cfg.settings || {});
-    writeJson(keyFor("stats", prefix ? `${prefix}CharStats` : "charStats"), cfg.stats || {});
-    writeJson(keyFor("times", prefix ? `${prefix}CharTimes` : "charTimes"), cfg.times || {});
-    writeJson(keyFor("srs", prefix ? `${prefix}CharSrs` : "charSrs"), cfg.srs || {});
-    writeJson(keyFor("scoreHistory", prefix ? `${prefix}ScoreHistory` : "scoreHistory"), cfg.scoreHistory || {});
-    writeJson(keyFor("dailyChallengeHistory", prefix ? `${prefix}DailyChallengeHistory` : "dailyChallengeHistory"), cfg.dailyChallengeHistory || {});
-    window.ModeAtlasStorage.set(highScoreKey, String(Number(cfg.highScore || 0)));
+
+    writeJson("settings", cfg.settings || {});
+    writeJson("charStats", cfg.stats || {});
+    writeJson("charTimes", cfg.times || {});
+    writeJson("srs", cfg.srs || {});
+    writeJson("scoreHistory", cfg.scoreHistory || {});
+    writeJson("dailyHistory", cfg.dailyChallengeHistory || {});
+    Store.writeModeNumber(mode, "highScore", Number(cfg.highScore || 0));
+
     try { window.KanaCloudSync?.scheduleSync?.(); } catch {}
   }
 
@@ -86,13 +87,23 @@
     return result;
   }
 
-  function renderStatCards(pairs){
-    return (pairs || []).map(([label, value]) => `
-        <div class="stat-card">
-            <div class="label">${label}</div>
-            <div class="value">${value}</div>
-        </div>
-    `).join("");
+  function createStatCard(label, value){
+    const card = document.createElement("div");
+    card.className = "stat-card";
+    const labelEl = document.createElement("div");
+    labelEl.className = "label";
+    labelEl.textContent = String(label);
+    const valueEl = document.createElement("div");
+    valueEl.className = "value";
+    valueEl.textContent = String(value);
+    card.append(labelEl, valueEl);
+    return card;
+  }
+
+
+  function renderStatCardsInto(container, pairs){
+    if (!container) return;
+    container.replaceChildren(...(pairs || []).map(([label, value]) => createStatCard(label, value)));
   }
 
   function downloadJson(filename, payload){
@@ -190,7 +201,7 @@
     normalizeTestResults,
     persistTestResults,
     buildTestResult,
-    renderStatCards,
+    renderStatCardsInto,
     saveTestModeResult,
     buildExportPayload,
     downloadJson,

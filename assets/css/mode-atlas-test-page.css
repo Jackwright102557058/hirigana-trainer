@@ -1445,7 +1445,13 @@ button.cell,
   -webkit-text-fill-color: #ffb3b3 ;
 }
 
-.branch-links .profile-trigger { order: 99 ; }
+.branch-links .profile-trigger {
+  order: 90;
+}
+
+.branch-links .ma-settings-trigger {
+  order: 91;
+}
 
 @media (max-width: 760px) {
   body { padding-top: 10px ; background-color: #05060b ; }
@@ -1483,7 +1489,7 @@ button.cell,
     border-radius: 999px ;
   }
   .branch-links .profile-trigger {
-    order: 99 ;
+    order: 90;
     padding: 8px ;
   }
   .branch-links .profile-trigger > span:not(.profile-dot) { display: none ; }
@@ -1662,3 +1668,12 @@ body[data-effective-display-mode="phone"] svg {
   grid-column: 1 / -1;
 }
 
+
+/* Branch nav account/action order: Profile then Settings. */
+.branch-links .profile-trigger {
+  order: 90;
+}
+
+.branch-links .ma-settings-trigger {
+  order: 91;
+}

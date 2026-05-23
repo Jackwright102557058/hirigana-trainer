@@ -9,12 +9,24 @@
     try { return window.ModeAtlas?.toast?.(message, type, ms); } catch { return null; }
   };
 
+  function storeGet(key, fallback = '') {
+    const store = window.ModeAtlasStorage;
+    return store?.get?.(key, fallback) ?? localStorage.getItem(key) ?? fallback;
+  }
+
+  function storeJSON(key, fallback) {
+    const store = window.ModeAtlasStorage;
+    if (store?.json) return store.json(key, fallback);
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }
+
   function canUseDevTools(){
     try {
       return !!(
         (window.ModeAtlasEnv && window.ModeAtlasEnv.allowDevTools) ||
         sessionStorage.getItem('modeAtlasDevTools') === '1' ||
-        localStorage.getItem('modeAtlasDevTools') === '1'
+        storeGet('modeAtlasDevTools') === '1'
       );
     } catch { return false; }
   }
@@ -32,7 +44,7 @@
   }
 
   function safeJSON(key, fallback){
-    try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
+    try { return storeJSON(key, fallback); } catch { return fallback; }
   }
 
   function statTotals(key){
@@ -63,7 +75,7 @@
     } catch {}
     const reading = statTotals('charStats');
     const writing = statTotals('reverseCharStats');
-    const themePref = window.ModeAtlasTheme?.getPreference?.() || localStorage.getItem('modeAtlasThemePreference') || 'system';
+    const themePref = window.ModeAtlasTheme?.getPreference?.() || storeGet('modeAtlasThemePreference', 'system') || 'system';
     const themeEffective = window.ModeAtlasTheme?.getEffective?.() || themePref;
     return {
       version: (window.ModeAtlasEnv && window.ModeAtlasEnv.appVersion) || window.ModeAtlasVersion || 'dev-local',
@@ -72,7 +84,7 @@
       theme: `${themePref} / ${themeEffective}`,
       online: navigator.onLine !== false,
       cloudState: status.text || 'n/a',
-      cloudLastSync: fmtDate(status.lastSync || localStorage.getItem('modeAtlasLastCloudSyncAt')),
+      cloudLastSync: fmtDate(status.lastSync || storeGet('modeAtlasLastCloudSyncAt', '0')),
       signedIn: !!status.user,
       localStorageKeys: localStorage.length,
       approximateLocalBytes: bytes,
@@ -86,8 +98,19 @@
     };
   }
 
-  function escapeHTML(value){
-    return String(value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+
+  function devEl(tag, className = '', text = '') {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== '') el.textContent = String(text);
+    return el;
+  }
+
+  function devButton(label, action) {
+    const button = devEl('button', 'ma-ui-btn', label);
+    button.type = 'button';
+    button.dataset[action] = '';
+    return button;
   }
 
   function openDevMenu(){
@@ -104,7 +127,29 @@
       backdrop.className = 'ma-dev-backdrop';
       document.body.appendChild(backdrop);
     }
-    backdrop.innerHTML = '<div class="ma-dev-modal"><div class="ma-dev-head"><h2>Mode Atlas Dev Diagnostics</h2><button class="ma-ui-btn" type="button" data-ma-dev-close>Close</button></div><div class="ma-dev-actions"><button class="ma-ui-btn" data-ma-dev-copy>Copy diagnostics</button><button class="ma-ui-btn" data-ma-dev-repair>Repair save data</button><button class="ma-ui-btn" data-ma-dev-sync>Force sync</button><button class="ma-ui-btn" data-ma-dev-safe>Safe mode reload</button><button class="ma-ui-btn" data-ma-dev-test-sound>Test sound</button></div><div class="ma-dev-table">' + Object.entries(data).map(([key, value]) => '<div class="ma-dev-row"><div class="ma-dev-key">' + escapeHTML(key) + '</div><div class="ma-dev-val">' + escapeHTML(String(value)) + '</div></div>').join('') + '</div></div>';
+    const modal = devEl('div', 'ma-dev-modal');
+    const head = devEl('div', 'ma-dev-head');
+    head.append(devEl('h2', '', 'Mode Atlas Dev Diagnostics'), devButton('Close', 'maDevClose'));
+
+    const actions = devEl('div', 'ma-dev-actions');
+    actions.append(
+      devButton('Copy diagnostics', 'maDevCopy'),
+      devButton('Repair save data', 'maDevRepair'),
+      devButton('Force sync', 'maDevSync'),
+      devButton('Safe mode reload', 'maDevSafe'),
+      devButton('Test sound', 'maDevTestSound'),
+      devButton('Refresh app assets', 'maDevRefreshAssets')
+    );
+
+    const table = devEl('div', 'ma-dev-table');
+    Object.entries(data).forEach(([key, value]) => {
+      const row = devEl('div', 'ma-dev-row');
+      row.append(devEl('div', 'ma-dev-key', key), devEl('div', 'ma-dev-val', String(value)));
+      table.append(row);
+    });
+
+    modal.append(head, actions, table);
+    backdrop.replaceChildren(modal);
     backdrop.classList.add('open');
     backdrop.onclick = event => {
       if (event.target === backdrop || event.target.closest('[data-ma-dev-close]')) backdrop.classList.remove('open');
@@ -123,6 +168,10 @@
       }
       if (event.target.closest('[data-ma-dev-test-sound]')) {
         window.ModeAtlasSounds?.testSound?.();
+      }
+      if (event.target.closest('[data-ma-dev-refresh-assets]')) {
+        toast('Refreshing app assets…');
+        window.ModeAtlasInstall?.refreshAppAssets?.({ reload: true }) || location.reload();
       }
     };
   }

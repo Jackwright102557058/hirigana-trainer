@@ -47,6 +47,7 @@ function createBaseTrainerDefaultSettings(overrides = {}) {
         mobileMode: false,
         endless: false,
         timeTrial: false,
+        speedRun: false,
         dailyChallenge: false,
         testMode: false,
         comboKana: false,
@@ -85,6 +86,38 @@ function isElementVisible(el) {
 }
 
 
+function createTrainerUiVisibilityControls(elements = {}) {
+    const sessionActionsEl = elements.sessionActionsEl || null;
+    const gameOverEl = elements.gameOverEl || null;
+    const retryBtn = elements.retryBtn || null;
+
+    function setSessionActionsVisible(visible = true) {
+        if (!sessionActionsEl) return;
+        setElementVisible(sessionActionsEl, !!visible);
+        sessionActionsEl.classList.toggle("is-active", !!visible);
+        document.body.classList.toggle("trainer-session-active", !!visible);
+    }
+
+    function setGameOverVisible(visible = true) {
+        if (!gameOverEl) return;
+        setElementVisible(gameOverEl, !!visible);
+        gameOverEl.classList.toggle("is-active", !!visible);
+    }
+
+    function setRetryButtonVisible(visible = true) {
+        if (!retryBtn) return;
+        setElementVisible(retryBtn, !!visible);
+        retryBtn.classList.toggle("is-active", !!visible);
+    }
+
+    return {
+        setSessionActionsVisible,
+        setGameOverVisible,
+        setRetryButtonVisible
+    };
+}
+
+
 function formatDuration(ms) {
     if (!Number.isFinite(ms) || ms <= 0) return "0 ms";
     if (ms < 1000) return `${Math.round(ms)} ms`;
@@ -120,6 +153,7 @@ function normalizeLegacyRowSelection() {
 function createDefaultScoreHistory() {
     return {
         endlessBest: { total: 0, correct: 0, wrong: 0 },
+        speedRunTop3: [],
         comboKanaBest: { same_row: 0, random: 0 },
         timeTrialTop3: []
     };
@@ -131,6 +165,7 @@ function normalizeScoreHistory(data) {
         ...defaults,
         ...(data || {}),
         endlessBest: { ...defaults.endlessBest, ...((data || {}).endlessBest || {}) },
+        speedRunTop3: Array.isArray((data || {}).speedRunTop3) ? data.speedRunTop3 : [],
         comboKanaBest: { ...defaults.comboKanaBest, ...((data || {}).comboKanaBest || {}) },
         timeTrialTop3: Array.isArray((data || {}).timeTrialTop3) ? data.timeTrialTop3 : []
     };
@@ -257,23 +292,39 @@ function formatDailyHistoryTime(ms) {
     return `${(ms / 1000).toFixed(1)}s`;
 }
 
+function createTrainerEl(tag, className = "", text = "") {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== "") el.textContent = String(text);
+    return el;
+}
+
+function createScoreRow(left, right) {
+    const row = createTrainerEl("div", "score-row");
+    row.append(createTrainerEl("span", "", left), createTrainerEl("span", "", right));
+    return row;
+}
+
+function createStatCard(label, value) {
+    const card = createTrainerEl("div", "stat-card");
+    card.append(createTrainerEl("div", "label", label), createTrainerEl("div", "value", value));
+    return card;
+}
+
 function renderDailyChallengeHistory() {
     const entries = Object.entries(dailyChallengeHistory || {})
         .filter(([dateKey, record]) => dateKey !== getTodayKey() && record && Number.isFinite(record.officialScore))
         .sort((a, b) => b[0].localeCompare(a[0]))
-        .slice(0, 7);
+        .slice(0, 5);
 
     if (!entries.length) {
-        dailyHistoryListEl.innerHTML = `<div class="score-row"><span>No history yet</span><span>—</span></div>`;
+        dailyHistoryListEl.replaceChildren(createScoreRow("No history yet", "—"));
         return;
     }
 
-    dailyHistoryListEl.innerHTML = entries.map(([dateKey, record]) => `
-        <div class="score-row">
-            <span>${dateKey}</span>
-            <span>${record.officialScore}/${record.total} · ${formatDailyHistoryTime(record.timeMs)}</span>
-        </div>
-    `).join("");
+    dailyHistoryListEl.replaceChildren(...entries.map(([dateKey, record]) =>
+        createScoreRow(dateKey, `${record.officialScore}/${record.total} · ${formatDailyHistoryTime(record.timeMs)}`)
+    ));
 }
 
 function renderDailyChallengeSummary() {
@@ -289,12 +340,12 @@ function updateTopStats() {
     endlessTotalEl.textContent = endlessRunTotal;
     endlessWrongEl.textContent = endlessRunWrong;
 
-    const showContinuous = (settings.endless || settings.timeTrial) && sessionStarted && !isDailyChallengeSession();
+    const showContinuous = (settings.endless || settings.timeTrial || settings.speedRun) && sessionStarted && !isDailyChallengeSession();
     setElementVisible(endlessTotalPill, showContinuous);
     setElementVisible(endlessWrongPill, showContinuous);
 
-    const showTrial = settings.timeTrial && sessionStarted && !isDailyChallengeSession();
-    setElementVisible(trialTimerPill, showTrial);
+    const showTimed = (settings.timeTrial || settings.speedRun) && sessionStarted && !isDailyChallengeSession();
+    setElementVisible(trialTimerPill, showTimed);
 
     updateDailyChallengePills();
     applyDailyChallengeTheme();
@@ -309,22 +360,27 @@ function renderScoreHistory() {
     comboRandomBestEl.textContent = scoreHistory.comboKanaBest.random || 0;
     renderDailyChallengeSummary();
 
+    if (typeof speedRunTop3El !== "undefined" && speedRunTop3El) {
+        const speedList = scoreHistory.speedRunTop3 || [];
+        const rows = speedList.length
+            ? speedList.map((entry, index) => createScoreRow(`#${index + 1}`, `${entry.score} pts · ${entry.correct}/${entry.answered} · ${entry.avgMs ? formatDuration(entry.avgMs) : "—"}`))
+            : [createScoreRow("No scores yet", "—")];
+        speedRunTop3El.replaceChildren(...rows);
+    }
+
     const list = scoreHistory.timeTrialTop3 || [];
     if (!list.length) {
-        timeTrialTop3El.innerHTML = `<div class="score-row"><span>No scores yet</span><span>—</span></div>`;
+        timeTrialTop3El.replaceChildren(createScoreRow("No scores yet", "—"));
         return;
     }
 
-    timeTrialTop3El.innerHTML = list.map((entry, index) => `
-        <div class="score-row">
-            <span>#${index + 1}</span>
-            <span>${entry.time}m / T${entry.target} / S${entry.score}</span>
-        </div>
-    `).join("");
+    timeTrialTop3El.replaceChildren(...list.map((entry, index) =>
+        createScoreRow(`#${index + 1}`, `${entry.time}m / T${entry.target} / S${entry.score}`)
+    ));
 }
 
 function updateTrialConfigVisibility() {
-    setElementVisible(trialConfigEl, settings.timeTrial && !settings.dailyChallenge && !settings.testMode);
+    setElementVisible(trialConfigEl, settings.timeTrial && !settings.speedRun && !settings.dailyChallenge && !settings.testMode);
     setElementVisible(comboConfigEl, settings.comboKana && !settings.dailyChallenge && !settings.testMode);
     comboSameRowBtn.classList.toggle("active", settings.comboMode === "same_row");
     comboRandomBtn.classList.toggle("active", settings.comboMode === "random");
@@ -338,7 +394,7 @@ function setBottomTab(tabName) {
     settings.activeBottomTab = settings.activeBottomTab === tabName ? null : tabName;
     applyPanelStates();
     // Drawer open/close is UI-only; do not mark cloud data updated or save over hydrated stats.
-    window.ModeAtlasStorage.setJSON("settings", settings);
+    window.ModeAtlasStorage.writeModeJSON("reading", "settings", settings);
 }
 
 function isModeLocked() { return sessionStarted; }
@@ -373,6 +429,7 @@ function buildModifierButtons() {
         ["srs", "SRS Mode"],
         ["endless", "Endless Mode"],
         ["timeTrial", "Time Trial Mode"],
+        ["speedRun", "Speed Run"],
         ["dailyChallenge", "Daily Challenge"],
         ["testMode", "Test Mode"],
         ["comboKana", "Combo Kana Mode"],
@@ -384,7 +441,7 @@ function buildModifierButtons() {
     ];
 
     const container = document.getElementById("modifierOptions");
-    container.innerHTML = "";
+    container.replaceChildren();
     const lockedModes = isModeLocked();
 
     for (const [key, label] of modes) {
@@ -393,13 +450,24 @@ function buildModifierButtons() {
                 settings.timeTrial = !settings.timeTrial;
                 if (settings.timeTrial) {
                     settings.endless = false;
+                    settings.speedRun = false;
                     settings.dailyChallenge = false;
                     settings.testMode = false;
+                }
+            } else if (key === "speedRun") {
+                settings.speedRun = !settings.speedRun;
+                if (settings.speedRun) {
+                    settings.endless = false;
+                    settings.timeTrial = false;
+                    settings.dailyChallenge = false;
+                    settings.testMode = false;
+                    settings.comboKana = false;
                 }
             } else if (key === "endless") {
                 settings.endless = !settings.endless;
                 if (settings.endless) {
                     settings.timeTrial = false;
+                    settings.speedRun = false;
                     settings.dailyChallenge = false;
                     settings.testMode = false;
                 }
@@ -408,6 +476,7 @@ function buildModifierButtons() {
                 if (settings.dailyChallenge) {
                     settings.timeTrial = false;
                     settings.endless = false;
+                    settings.speedRun = false;
                     settings.testMode = false;
                     settings.comboKana = false;
                     settings.hint = false;
@@ -417,6 +486,7 @@ function buildModifierButtons() {
                 if (settings.testMode) {
                     settings.timeTrial = false;
                     settings.endless = false;
+                    settings.speedRun = false;
                     settings.dailyChallenge = false;
                     settings.comboKana = false;
                     settings.hint = false;
@@ -426,6 +496,7 @@ function buildModifierButtons() {
                 if (settings.comboKana) {
                     settings.dailyChallenge = false;
                     settings.testMode = false;
+                    settings.speedRun = false;
                 }
             } else {
                 settings[key] = !settings[key];
@@ -444,7 +515,7 @@ function buildOptionButtons() { /* Options menu removed; SRS now lives in Modifi
 function buildRows(containerId, sourceRows, selectedRowsKey, displayPrefix) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    container.innerHTML = "";
+    container.replaceChildren();
     const lockedModes = isModeLocked();
 
     for (const row of Object.keys(sourceRows)) {
@@ -483,14 +554,14 @@ function showPopupForChar(ch, e) {
     const tm = getAverageTime(ch);
     const sr = getSrs(ch);
 
-    popupEl.innerHTML = `
-        <div class="popup-title">${ch}</div>
-        <div>Romaji: ${getAnswerMapForCurrentMode()[ch] || "—"}</div>
-        <div>Right: ${st.correct}</div>
-        <div>Wrong: ${st.wrong}</div>
-        <div>Avg time: ${formatDuration(tm)}</div>
-        <div>SRS level: ${sr.level}</div>
-    `;
+    popupEl.replaceChildren(
+        createTrainerEl("div", "popup-title", ch),
+        createTrainerEl("div", "", `Romaji: ${getAnswerMapForCurrentMode()[ch] || "—"}`),
+        createTrainerEl("div", "", `Right: ${st.correct}`),
+        createTrainerEl("div", "", `Wrong: ${st.wrong}`),
+        createTrainerEl("div", "", `Avg time: ${formatDuration(tm)}`),
+        createTrainerEl("div", "", `SRS level: ${sr.level}`)
+    );
 
     setElementVisible(popupEl, true);
 
@@ -540,7 +611,7 @@ function getHeatmapCharsForDisplay() {
 }
 
 function renderHeatmap() {
-    heatmapEl.innerHTML = "";
+    heatmapEl.replaceChildren();
 
     const heatmapChars = typeof getHeatmapCharsForDisplay === "function"
         ? getHeatmapCharsForDisplay()
@@ -638,7 +709,7 @@ function showComboTierNotice(length) {
     }, 1600);
 }
 
-function startTrialTimer(durationMinutes) {
+function startTimedModeTimer(durationMinutes) {
     stopTrialTimer();
     trialEndTime = Date.now() + durationMinutes * 60 * 1000;
     setElementVisible(trialTimerPill, true);
@@ -655,6 +726,8 @@ function startTrialTimer(durationMinutes) {
     tick();
     trialTimerId = setInterval(tick, 100);
 }
+
+const startTrialTimer = startTimedModeTimer;
 
 function stopTrialTimer() {
     if (trialTimerId) {
@@ -703,7 +776,7 @@ function advanceTestModeAfterAnswer() {
 }
 
 function currentFlowModeIsContinuous() {
-    return settings.endless || settings.timeTrial || settings.testMode;
+    return settings.endless || settings.timeTrial || settings.speedRun || settings.testMode;
 }
 
 function average(arr) {
@@ -789,20 +862,257 @@ function getSessionDifficultyLists() {
 function renderSessionList(container, title, items) {
     if (!items.length) {
         setElementHidden(container, true);
-        container.innerHTML = "";
+        container.replaceChildren();
         return;
     }
 
     setElementVisible(container, true);
-    container.innerHTML =
-        `<h3>${title}</h3>` +
-        items.map(item => `
-            <div class="session-list-item">
-                <span>${item.char}</span>
-                <span>${item.correct}✓ / ${item.wrong}✗</span>
-            </div>
-        `).join("");
+    const heading = createTrainerEl("h3", "", title);
+    const rows = items.map(item => {
+        const row = createTrainerEl("div", "session-list-item");
+        row.append(
+            createTrainerEl("span", "", item.char),
+            createTrainerEl("span", "", `${item.correct}✓ / ${item.wrong}✗`)
+        );
+        return row;
+    });
+    container.replaceChildren(heading, ...rows);
 }
+
+
+
+
+function beginTrainerSessionEnd() {
+    hideComboTierNotice();
+    window.KanaCloudSync?.setSessionCloudPause?.(false);
+    window.KanaCloudSync?.flushDeferredSessionSync?.(650);
+}
+
+function applyTrainerStandardSessionEnd(options = {}) {
+    const {
+        sessionStats,
+        inputEl = null,
+        startWrap = null,
+        promptEl = null,
+        showSessionModal,
+        stopTrialTimer,
+        updateBestScores,
+        setGameOverVisible,
+        setSessionActionsVisible,
+        updateTopStats,
+        renderDebugPanel,
+        debugPanel = null,
+        autoEnded = false,
+        afterPromptReset
+    } = options;
+
+    if (sessionStats) {
+        sessionStats.active = false;
+        sessionStats.endTime = Date.now();
+    }
+
+    if (typeof stopTrialTimer === "function") stopTrialTimer();
+    if (typeof updateBestScores === "function") updateBestScores();
+
+    if (inputEl) inputEl.disabled = true;
+    if (typeof setGameOverVisible === "function") setGameOverVisible(false);
+    if (typeof setSessionActionsVisible === "function") setSessionActionsVisible(false);
+    setElementVisible(startWrap, true);
+    clearHint();
+
+    if (promptEl) promptEl.textContent = "—";
+    if (typeof afterPromptReset === "function") afterPromptReset();
+
+    if (typeof showSessionModal === "function") showSessionModal(autoEnded);
+    if (typeof updateTopStats === "function") updateTopStats();
+    if (debugPanel && typeof renderDebugPanel === "function") renderDebugPanel();
+}
+
+function applyTrainerDailyStopUi(options = {}) {
+    const {
+        inputEl = null,
+        startWrap = null,
+        promptEl = null,
+        stopTrialTimer,
+        setGameOverVisible,
+        setSessionActionsVisible,
+        updateTopStats,
+        renderDebugPanel,
+        debugPanel = null,
+        afterPromptReset
+    } = options;
+
+    if (typeof stopTrialTimer === "function") stopTrialTimer();
+    if (inputEl) inputEl.disabled = true;
+    if (typeof setGameOverVisible === "function") setGameOverVisible(false);
+    if (typeof setSessionActionsVisible === "function") setSessionActionsVisible(false);
+    setElementVisible(startWrap, true);
+    clearHint();
+
+    if (promptEl) promptEl.textContent = "—";
+    if (typeof afterPromptReset === "function") afterPromptReset();
+
+    if (typeof updateTopStats === "function") updateTopStats();
+    if (debugPanel && typeof renderDebugPanel === "function") renderDebugPanel();
+}
+
+
+function prepareTrainerSessionStart(options = {}) {
+    window.KanaCloudSync?.setSessionCloudPause?.(true);
+    const now = Date.now();
+    const sessionStats = createEmptySessionStats();
+    sessionStats.active = true;
+    sessionStats.startTime = now;
+
+    const dailyActive = typeof options.isDailyChallengeSession === "function" && options.isDailyChallengeSession();
+    const testActive = typeof options.isTestModeSession === "function" && options.isTestModeSession();
+
+    return {
+        sessionStats,
+        streak: 0,
+        endlessRunTotal: 0,
+        endlessRunWrong: 0,
+        lastComboLength: typeof options.getComboLength === "function" ? options.getComboLength() : 2,
+        daily: dailyActive ? {
+            sequence: typeof options.buildDailySequence === "function" ? options.buildDailySequence() : [],
+            index: 0,
+            correct: 0,
+            wrong: 0,
+            startTime: now
+        } : null,
+        test: testActive ? {
+            sequence: typeof options.buildTestSequence === "function" ? options.buildTestSequence() : [],
+            index: 0,
+            correct: 0,
+            wrong: 0,
+            startTime: now
+        } : null
+    };
+}
+
+function applyTrainerSessionStartUi(options = {}) {
+    const {
+        debugPanel = null,
+        gameOverTitleEl = null,
+        startWrap = null,
+        inputEl = null,
+        trialTimerPill = null,
+        settings = {},
+        isDailyChallengeSession,
+        setGameOverVisible,
+        setRetryButtonVisible,
+        setSessionActionsVisible,
+        updateTopStats,
+        renderDebugPanel
+    } = options;
+
+    if (typeof updateTopStats === "function") updateTopStats();
+    if (debugPanel && typeof renderDebugPanel === "function") renderDebugPanel();
+
+    if (typeof setGameOverVisible === "function") setGameOverVisible(false);
+    if (gameOverTitleEl) gameOverTitleEl.textContent = "Wrong";
+    if (typeof setRetryButtonVisible === "function") setRetryButtonVisible(false);
+    setElementHidden(startWrap, true);
+    if (typeof setSessionActionsVisible === "function") setSessionActionsVisible(true);
+    if (inputEl) inputEl.disabled = false;
+
+    const dailyActive = typeof isDailyChallengeSession === "function" && isDailyChallengeSession();
+    if (!settings.timeTrial && !settings.speedRun || dailyActive) {
+        setElementHidden(trialTimerPill, true);
+    }
+}
+
+function startTrainerTimedSession(options = {}) {
+    const {
+        settings = {},
+        trialTimeEl = null,
+        trialTargetEl = null,
+        isDailyChallengeSession,
+        startTimedModeTimer
+    } = options;
+
+    const dailyActive = typeof isDailyChallengeSession === "function" && isDailyChallengeSession();
+    if (settings.timeTrial && !dailyActive) {
+        const timeMinutes = Math.max(0.1, Number(trialTimeEl?.value) || 0.5);
+        const trialTarget = Math.max(1, Number(trialTargetEl?.value) || 20);
+        if (typeof startTimedModeTimer === "function") startTimedModeTimer(timeMinutes);
+        return trialTarget;
+    }
+
+    if (settings.speedRun && !dailyActive) {
+        if (typeof startTimedModeTimer === "function") startTimedModeTimer(1);
+        return 0;
+    }
+
+    return 0;
+}
+
+
+function showTrainerSessionModal(options = {}) {
+    const {
+        autoEnded = false,
+        sessionStats,
+        settings,
+        endlessRunTotal = 0,
+        endlessRunWrong = 0,
+        trialTarget = 0,
+        sessionModalBackdrop,
+        sessionStatsGrid,
+        sessionHardList,
+        sessionEasyList
+    } = options;
+
+    if (!sessionStats || !sessionModalBackdrop || !sessionStatsGrid) return;
+
+    sessionStats.endTime = Date.now();
+
+    const total = sessionStats.answered;
+    const accuracy = total ? ((sessionStats.correct / total) * 100) : 0;
+    const timings = Array.isArray(sessionStats.timings) ? sessionStats.timings : [];
+    const avgTime = timings.length ? average(timings) : 0;
+    const fastest = timings.length ? Math.min(...timings) : 0;
+    const slowest = timings.length ? Math.max(...timings) : 0;
+    const durationMs = sessionStats.startTime ? (sessionStats.endTime - sessionStats.startTime) : 0;
+
+    const cards = [
+        ["Answered", total],
+        ["Right", sessionStats.correct],
+        ["Wrong", sessionStats.wrong],
+        ["Accuracy", `${accuracy.toFixed(1)}%`],
+        ["Best Streak", sessionStats.bestStreak],
+        ["Avg Time", formatDuration(avgTime)],
+        ["Fastest", formatDuration(fastest)],
+        ["Slowest", formatDuration(slowest)],
+        ["Session Time", formatDuration(durationMs)]
+    ];
+
+    if (settings?.speedRun) {
+        const correct = Math.max(0, endlessRunTotal - endlessRunWrong);
+        const answered = Math.max(0, endlessRunTotal);
+        const wrong = Math.max(0, endlessRunWrong);
+        const avgMs = timings.length ? Math.round(average(timings)) : 0;
+        const speedAccuracy = answered ? Math.round((correct / answered) * 100) : 0;
+        const speedScore = Math.max(0, Math.round((correct * 100) + ((speedAccuracy / 100) * 250) - (wrong * 50) - (avgMs / 20)));
+        cards.push(["Speed Score", speedScore]);
+        cards.push(["Accuracy", `${speedAccuracy}%`]);
+        cards.push(["Avg Speed", avgMs ? formatDuration(avgMs) : "—"]);
+    } else if (settings?.timeTrial) {
+        cards.push(["Target", trialTarget]);
+        cards.push(["Final Score", sessionStats.correct]);
+    }
+
+    sessionStatsGrid.replaceChildren(...cards.map(([label, value]) => createStatCard(label, value)));
+
+    const titleNode = sessionModalBackdrop.querySelector("h2");
+    if (titleNode) titleNode.textContent = autoEnded ? (settings?.speedRun ? "Speed Run Complete" : "Time Trial Complete") : "Session Stats";
+
+    const { hardest, easiest } = getSessionDifficultyLists();
+    renderSessionList(sessionHardList, "Hardest This Session", hardest);
+    renderSessionList(sessionEasyList, "Strongest This Session", easiest);
+
+    sessionModalBackdrop.classList.add("open");
+}
+
 
 function openImportModal() {
     importTextarea.value = "";

@@ -19,7 +19,7 @@ const SPECIAL_CHAR_SET = ResultsUI.SPECIAL_CHAR_SET || new Set();
 const computeRowPerformance = ResultsUI.computeRowPerformance || (() => ({ rows: [], hiragana: [], katakana: [] }));
 const getRowCellExtremes = ResultsUI.getRowCellExtremes || (() => new Map());
 const rowNeedsErrorStyling = ResultsUI.rowNeedsErrorStyling || ((row) => !!row && Number(row.wrong || 0) > 0);
-const renderRowPerformance = ResultsUI.renderRowPerformance || (() => "");
+const renderRowPerformanceNode = ResultsUI.renderRowPerformanceNode || null;
 const formatDuration = ResultsUI.formatDuration || (() => "—");
 const normalizeTestResult = ResultsUI.normalizeTestResult || (() => null);
 const buildAverageResult = ResultsUI.buildAverageResult || (() => null);
@@ -222,57 +222,60 @@ function renderDebugPanel() {
     const testsOnly = STORED_RESULTS.filter(item => item.type !== "average");
     const keyInfo = getStorageKeyDebugInfo();
 
-    DEBUG_PANEL.innerHTML = `
-        <div class="storage-debug-head">
-            <div class="storage-debug-title">Storage Debug</div>
-            <button type="button" id="debugCloseBtn" class="storage-debug-close">×</button>
-        </div>
+    const head = createResultEl("div", "storage-debug-head");
+    head.append(createResultEl("div", "storage-debug-title", "Storage Debug"));
+    const close = createResultEl("button", "storage-debug-close", "×");
+    close.type = "button";
+    close.id = "debugCloseBtn";
+    head.append(close);
 
-        <div class="storage-debug-grid storage-debug-section">
-            <div><strong>Reading results:</strong> ${readingResults.length}</div>
-            <div><strong>Writing results:</strong> ${writingResults.length}</div>
-            <div><strong>Visible tests:</strong> ${testsOnly.length}</div>
-            <div><strong>Selected:</strong> ${selectedResultId || "—"}</div>
-        </div>
+    const summary = createResultEl("div", "storage-debug-grid storage-debug-section");
+    summary.append(
+        storageDebugLine("Reading results", readingResults.length),
+        storageDebugLine("Writing results", writingResults.length),
+        storageDebugLine("Visible tests", testsOnly.length),
+        storageDebugLine("Selected", selectedResultId || "—")
+    );
 
-        <div class="storage-debug-section">
-            <div class="storage-debug-card-title">Storage keys</div>
-            <div class="storage-debug-key-grid">
-                ${keyInfo.map(item => `
-                    <div class="storage-debug-card-small">
-                        <div class="storage-debug-key-title">${item.key}</div>
-                        <div class="storage-debug-muted">Present: ${item.present ? "yes" : "no"} · Items: ${item.count} · Raw length: ${item.rawLength}</div>
-                        ${item.parseError ? `<div class="storage-debug-danger">Parse error: ${item.parseError}</div>` : ""}
-                    </div>
-                `).join("")}
-            </div>
-        </div>
+    const keySection = createResultEl("div", "storage-debug-section");
+    keySection.append(createResultEl("div", "storage-debug-card-title", "Storage keys"));
+    const keyGrid = createResultEl("div", "storage-debug-key-grid");
+    keyInfo.forEach(item => keyGrid.append(storageDebugCard(item)));
+    keySection.append(keyGrid);
 
-        <div>
-            <div class="storage-debug-card-title">Delete saved tests</div>
-            <div class="storage-debug-subtitle">Only individual saved tests can be deleted here. Overall averages stay protected.</div>
-            <div class="storage-debug-test-grid">
-                ${testsOnly.length ? testsOnly.map(item => `
-                    <div class="storage-debug-card-small">
-                        <div class="storage-debug-test-row">
-                            <div class="storage-debug-test-main">
-                                <div class="storage-debug-test-title">${item.title}</div>
-                                <div class="storage-debug-test-meta">${item.mode === "reading" ? "Reading" : "Writing"} · ${item.date} · ${item.startedAt}</div>
-                                <div class="storage-debug-test-id">${item.id}</div>
-                            </div>
-                            <button
-                                type="button"
-                                class="debug-delete-btn"
-                                data-test-id="${item.id}"
-                                data-test-mode="${item.mode}"
-                                class="storage-debug-delete-btn"
-                            >Delete</button>
-                        </div>
-                    </div>
-                `).join("") : `<div class="storage-debug-empty">No individual tests to delete.</div>`}
-            </div>
-        </div>
-    `;
+    const deleteSection = document.createElement("div");
+    deleteSection.append(
+        createResultEl("div", "storage-debug-card-title", "Delete saved tests"),
+        createResultEl("div", "storage-debug-subtitle", "Only individual saved tests can be deleted here. Overall averages stay protected.")
+    );
+
+    const testGrid = createResultEl("div", "storage-debug-test-grid");
+    if (testsOnly.length) {
+        testsOnly.forEach(item => {
+            const card = createResultEl("div", "storage-debug-card-small");
+            const row = createResultEl("div", "storage-debug-test-row");
+            const main = createResultEl("div", "storage-debug-test-main");
+            main.append(
+                createResultEl("div", "storage-debug-test-title", item.title),
+                createResultEl("div", "storage-debug-test-meta", `${item.mode === "reading" ? "Reading" : "Writing"} · ${item.date} · ${item.startedAt}`),
+                createResultEl("div", "storage-debug-test-id", item.id)
+            );
+
+            const deleteBtn = createResultEl("button", "debug-delete-btn storage-debug-delete-btn", "Delete");
+            deleteBtn.type = "button";
+            deleteBtn.dataset.testId = item.id;
+            deleteBtn.dataset.testMode = item.mode;
+
+            row.append(main, deleteBtn);
+            card.append(row);
+            testGrid.append(card);
+        });
+    } else {
+        testGrid.append(createResultEl("div", "storage-debug-empty", "No individual tests to delete."));
+    }
+    deleteSection.append(testGrid);
+
+    DEBUG_PANEL.replaceChildren(head, summary, keySection, deleteSection);
 
     DEBUG_PANEL.querySelector("#debugCloseBtn")?.addEventListener("click", closeDebugPanel);
     DEBUG_PANEL.querySelectorAll(".debug-delete-btn").forEach(button => {
@@ -309,6 +312,63 @@ function detailMetric(label, value) {
             <div class="value">${value}</div>
         </div>
     `;
+}
+
+function createResultEl(tag, className = "", text = "") {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== "") el.textContent = String(text);
+    return el;
+}
+
+function createMegaInlineCard(label, value) {
+    const card = createResultEl("div", "mega-inline-card");
+    card.append(createResultEl("div", "label", label), createResultEl("div", "value", value));
+    return card;
+}
+
+function createMetricCard(label, value) {
+    const card = createResultEl("div", "metric");
+    card.append(createResultEl("div", "label", label), createResultEl("div", "value", value));
+    return card;
+}
+
+function renderMegaInlineCards(target, items) {
+    target.replaceChildren(...items.map(([label, value]) => createMegaInlineCard(label, value)));
+}
+
+function renderMetricCards(target, items) {
+    target.replaceChildren(...items.map(([label, value]) => createMetricCard(label, value)));
+}
+
+function createModalStat(label, value, valueClass = "") {
+    const stat = createResultEl("div", "modal-stat");
+    stat.append(createResultEl("div", "label", label), createResultEl("div", valueClass ? `value ${valueClass}` : "value", value));
+    return stat;
+}
+
+function renderRowPerformanceInto(result, viewMode = "regular") {
+    if (typeof renderRowPerformanceNode === "function") {
+        ROW_PERFORMANCE_MOUNT.replaceChildren(renderRowPerformanceNode(result, viewMode));
+    } else {
+        ROW_PERFORMANCE_MOUNT.replaceChildren();
+    }
+}
+
+function storageDebugLine(label, value) {
+    const row = document.createElement("div");
+    row.append(createResultEl("strong", "", `${label}:`), document.createTextNode(` ${value}`));
+    return row;
+}
+
+function storageDebugCard(item) {
+    const card = createResultEl("div", "storage-debug-card-small");
+    card.append(
+        createResultEl("div", "storage-debug-key-title", item.key),
+        createResultEl("div", "storage-debug-muted", `Present: ${item.present ? "yes" : "no"} · Items: ${item.count} · Raw length: ${item.rawLength}`)
+    );
+    if (item.parseError) card.append(createResultEl("div", "storage-debug-danger", `Parse error: ${item.parseError}`));
+    return card;
 }
 
 function toTitleCase(value) {
@@ -384,35 +444,39 @@ function getModifierStateLabel(result) {
     return getModifierTags(result).join(" · ");
 }
 
+function createResultTile(item) {
+    const button = createResultEl("button", `test-tile ${item.mode} ${item.type === "average" ? "average" : ""} ${item.id === selectedResultId ? "active" : ""}`);
+    button.type = "button";
+    button.dataset.resultId = item.id;
+
+    const top = createResultEl("div", "test-tile-top");
+    const titleWrap = document.createElement("div");
+    titleWrap.append(
+        createResultEl("div", "test-title", item.title),
+        createResultEl("div", "test-sub", `${item.date} · ${item.startedAt} · ${item.kanaAsked} kana shown`)
+    );
+    top.append(titleWrap, createResultEl("div", "test-score", `${item.overallScore}%`));
+
+    const tagRow = createResultEl("div", "tag-row");
+    if (item.type === "average") tagRow.append(createResultEl("span", "tag gold", "Overall Average"));
+    getModifierTags(item).forEach(tag => tagRow.append(createResultEl("span", "tag gold", tag)));
+    tagRow.append(createResultEl("span", "tag", `${item.correct} right / ${item.wrong} wrong`));
+
+    button.append(top, tagRow);
+    button.addEventListener("click", () => {
+        selectedResultId = button.dataset.resultId;
+        selectedKana = null;
+        renderAll();
+    });
+    return button;
+}
+
 function renderResultsList() {
     if (!STORED_RESULTS.length) {
-        TESTS_GRID.innerHTML = `<div class="empty">No test results yet. Complete a test in Reading Practice or Writing Practice and it will appear here.</div>`;
+        TESTS_GRID.replaceChildren(createResultEl("div", "empty", "No test results yet. Complete a test in Reading Practice or Writing Practice and it will appear here."));
         return;
     }
-    TESTS_GRID.innerHTML = STORED_RESULTS.map(item => `
-        <button class="test-tile ${item.mode} ${item.type === "average" ? "average" : ""} ${item.id === selectedResultId ? "active" : ""}" data-result-id="${item.id}" type="button">
-            <div class="test-tile-top">
-                <div>
-                    <div class="test-title">${item.title}</div>
-                    <div class="test-sub">${item.date} · ${item.startedAt} · ${item.kanaAsked} kana shown</div>
-                </div>
-                <div class="test-score">${item.overallScore}%</div>
-            </div>
-            <div class="tag-row">
-                ${item.type === "average" ? `<span class="tag gold">Overall Average</span>` : ''}
-                ${getModifierTags(item).map(tag => `<span class="tag gold">${tag}</span>`).join('')}
-                <span class="tag">${item.correct} right / ${item.wrong} wrong</span>
-            </div>
-        </button>
-    `).join("");
-
-    TESTS_GRID.querySelectorAll(".test-tile").forEach(button => {
-        button.addEventListener("click", () => {
-            selectedResultId = button.dataset.resultId;
-            selectedKana = null;
-            renderAll();
-        });
-    });
+    TESTS_GRID.replaceChildren(...STORED_RESULTS.map(createResultTile));
 }
 
 function renderSnapshot(result) {
@@ -434,57 +498,27 @@ function renderSnapshot(result) {
         OVERALL_SCORE_CARD.classList.add("writing");
     }
 
-    ROW_PERFORMANCE_MOUNT.innerHTML = renderRowPerformance(result, activeRowGraphView);
+    renderRowPerformanceInto(result, activeRowGraphView);
 
-    SNAPSHOT_BREAKDOWN.innerHTML = [
-        `
-            <div class="mega-inline-card">
-                <div class="label">Hiragana</div>
-                <div class="value">${result.breakdown.hiragana.correct} / ${result.breakdown.hiragana.correct + result.breakdown.hiragana.wrong}</div>
-            </div>
-        `,
-        `
-            <div class="mega-inline-card">
-                <div class="label">Katakana</div>
-                <div class="value">${result.breakdown.katakana.correct} / ${result.breakdown.katakana.correct + result.breakdown.katakana.wrong}</div>
-            </div>
-        `,
-        `
-            <div class="mega-inline-card">
-                <div class="label">Dakuten</div>
-                <div class="value">${result.type === "average" ? (result.dakuten ? "Mixed" : "Off") : (result.dakuten ? "On" : "Off")}</div>
-            </div>
-        `,
-        `
-            <div class="mega-inline-card">
-                <div class="label">Yōon</div>
-                <div class="value">${result.type === "average" ? (result.yoon ? "Mixed" : "Off") : (result.yoon ? "On" : "Off")}</div>
-            </div>
-        `,
-        `
-            <div class="mega-inline-card">
-                <div class="label">Ext. Katakana</div>
-                <div class="value">${result.type === "average" ? (result.extendedKatakana ? "Mixed" : "Off") : (result.extendedKatakana ? "On" : "Off")}</div>
-            </div>
-        `,
-        `
-            <div class="mega-inline-card">
-                <div class="label">Kana shown</div>
-                <div class="value">${result.kanaAsked}</div>
-            </div>
-        `
-    ].join("");
+    renderMegaInlineCards(SNAPSHOT_BREAKDOWN, [
+        ["Hiragana", `${result.breakdown.hiragana.correct} / ${result.breakdown.hiragana.correct + result.breakdown.hiragana.wrong}`],
+        ["Katakana", `${result.breakdown.katakana.correct} / ${result.breakdown.katakana.correct + result.breakdown.katakana.wrong}`],
+        ["Dakuten", result.type === "average" ? (result.dakuten ? "Mixed" : "Off") : (result.dakuten ? "On" : "Off")],
+        ["Yōon", result.type === "average" ? (result.yoon ? "Mixed" : "Off") : (result.yoon ? "On" : "Off")],
+        ["Ext. Katakana", result.type === "average" ? (result.extendedKatakana ? "Mixed" : "Off") : (result.extendedKatakana ? "On" : "Off")],
+        ["Kana shown", result.kanaAsked]
+    ]);
 }
 
 function renderDetailHeader(result) {
     DETAIL_TITLE.textContent = result.title;
     DETAIL_SUB.textContent = `${result.mode === "reading" ? "Reading Practice" : "Writing Practice"} · ${result.type === "average" ? "Pinned summary" : result.date} · ${result.type === "average" ? "Click a kana for its average timing" : formatDuration(result.durationMs) + " total time"}`;
-    DETAIL_METRICS.innerHTML = [
-        detailMetric("Overall", `${result.overallScore}%`),
-        detailMetric("Correct", `${result.correct}`),
-        detailMetric("Wrong", `${result.wrong}`),
-        detailMetric("Avg Time", `${formatDuration(result.avgMs)}`)
-    ].join("");
+    renderMetricCards(DETAIL_METRICS, [
+        ["Overall", `${result.overallScore}%`],
+        ["Correct", `${result.correct}`],
+        ["Wrong", `${result.wrong}`],
+        ["Avg Time", `${formatDuration(result.avgMs)}`]
+    ]);
     const hideBtn = document.getElementById("hideUnusedBtn");
     if (hideBtn) {
         hideBtn.classList.toggle("active", hideUnusedKana);
@@ -508,35 +542,17 @@ function openKanaModal(result, kana) {
     KANA_MODAL_ROMAJI.textContent = record.romaji || "—";
 
     if (result.type === "average") {
-        KANA_MODAL_STATS.innerHTML = `
-            <div class="modal-stat">
-                <div class="label">Correct</div>
-                <div class="value">${record.correct || 0}</div>
-            </div>
-            <div class="modal-stat">
-                <div class="label">Wrong</div>
-                <div class="value">${record.wrong || 0}</div>
-            </div>
-            <div class="modal-stat">
-                <div class="label">Accuracy</div>
-                <div class="value">${accuracy}%</div>
-            </div>
-            <div class="modal-stat">
-                <div class="label">Avg Time</div>
-                <div class="value">${formatDuration(record.avgMs)}</div>
-            </div>
-        `;
+        KANA_MODAL_STATS.replaceChildren(
+            createModalStat("Correct", record.correct || 0),
+            createModalStat("Wrong", record.wrong || 0),
+            createModalStat("Accuracy", `${accuracy}%`),
+            createModalStat("Avg Time", formatDuration(record.avgMs))
+        );
     } else {
-        KANA_MODAL_STATS.innerHTML = `
-            <div class="modal-stat">
-                <div class="label">Result</div>
-                <div class="value ${wasCorrect ? 'result-answer-correct' : 'result-answer-wrong'}">${wasCorrect ? 'Correct' : 'Wrong'}</div>
-            </div>
-            <div class="modal-stat">
-                <div class="label">Time</div>
-                <div class="value">${formatDuration(record.avgMs)}</div>
-            </div>
-        `;
+        KANA_MODAL_STATS.replaceChildren(
+            createModalStat("Result", wasCorrect ? "Correct" : "Wrong", wasCorrect ? "result-answer-correct" : "result-answer-wrong"),
+            createModalStat("Time", formatDuration(record.avgMs))
+        );
     }
 
     KANA_MODAL_BACKDROP.classList.add("open");
@@ -567,60 +583,60 @@ function renderHeatmap(result) {
 
     const buildCell = (char, record, markers) => {
         if (!record) {
-            if (SPECIAL_CHAR_SET.has(char)) {
-                if (hideUnusedKana) return `<div class="cell empty-slot" aria-hidden="true"></div>`;
-                return `
-                    <div class="cell reference" aria-label="${char} not used in this test">
-                        <div class="cell-char">${char}</div>
-                        <div class="cell-time">Off</div>
-                    </div>
-                `;
-            }
-            return `<div class="cell empty-slot" aria-hidden="true"></div>`;
+            const empty = createResultEl("div", "cell empty-slot");
+            empty.setAttribute("aria-hidden", "true");
+
+            if (!SPECIAL_CHAR_SET.has(char)) return empty;
+            if (hideUnusedKana) return empty;
+
+            const reference = createResultEl("div", "cell reference");
+            reference.setAttribute("aria-label", `${char} not used in this test`);
+            reference.append(createResultEl("div", "cell-char", char), createResultEl("div", "cell-time", "Off"));
+            return reference;
         }
+
         const marker = markers[char];
-        const badge = marker
-            ? `<span class="cell-badge ${marker}">${marker === 'fastest' ? 'Fastest' : 'Slowest'}</span>`
-            : '';
-        return `
-            <button class="cell ${selectedKana === char ? "active" : ""}" data-kana="${char}" data-heat-color="${getHeatColor(result, record)}" type="button">
-                ${badge}
-                <div class="cell-char">${char}</div>
-                <div class="cell-time">${formatDuration(record.avgMs)}</div>
-            </button>
-        `;
-    };
+        const button = createResultEl("button", `cell ${selectedKana === char ? "active" : ""}`.trim());
+        button.type = "button";
+        button.dataset.kana = char;
+        button.dataset.heatColor = getHeatColor(result, record);
 
-    TEST_HEATMAP.innerHTML = visibleGroups.map(row => {
-        const markers = rowExtremes.get(`${row.script}:${row.key}`) || {};
-        const chunks = [];
-        for (let i = 0; i < row.activeChars.length; i += 5) {
-            const slice = row.activeChars.slice(i, i + 5);
-            while (slice.length < 5) slice.push(null);
-            chunks.push(slice);
-        }
-
-        const rowsHtml = chunks.map(chunk => `
-            <div class="heatmap-row-cells">
-                ${chunk.map(char => char ? buildCell(char, result.kana?.[char], markers) : `<div class="cell empty-slot" aria-hidden="true"></div>`).join("")}
-            </div>
-        `).join("");
-
-        return `
-            <div class="heatmap-row-group">
-                <div class="heatmap-row-label">${row.key} Row</div>
-                ${rowsHtml}
-            </div>
-        `;
-    }).join("");
-
-    TEST_HEATMAP.querySelectorAll(".cell[data-kana]").forEach(button => {
+        if (marker) button.append(createResultEl("span", `cell-badge ${marker}`, marker === "fastest" ? "Fastest" : "Slowest"));
+        button.append(createResultEl("div", "cell-char", char), createResultEl("div", "cell-time", formatDuration(record.avgMs)));
         button.addEventListener("click", () => {
             selectedKana = button.dataset.kana;
             renderHeatmap(result);
             openKanaModal(result, selectedKana);
         });
+        return button;
+    };
+
+    const groups = visibleGroups.map(row => {
+        const markers = rowExtremes.get(`${row.script}:${row.key}`) || {};
+        const group = createResultEl("div", "heatmap-row-group");
+        group.append(createResultEl("div", "heatmap-row-label", `${row.key} Row`));
+
+        for (let i = 0; i < row.activeChars.length; i += 5) {
+            const slice = row.activeChars.slice(i, i + 5);
+            while (slice.length < 5) slice.push(null);
+
+            const rowCells = createResultEl("div", "heatmap-row-cells");
+            slice.forEach(char => {
+                if (char) rowCells.append(buildCell(char, result.kana?.[char], markers));
+                else {
+                    const empty = createResultEl("div", "cell empty-slot");
+                    empty.setAttribute("aria-hidden", "true");
+                    rowCells.append(empty);
+                }
+            });
+            group.append(rowCells);
+        }
+
+        return group;
     });
+
+    TEST_HEATMAP.replaceChildren(...groups);
+    applyHeatmapCellColours(TEST_HEATMAP);
 }
 
 function renderAll() {
@@ -643,39 +659,19 @@ function renderAll() {
         OVERALL_TIME.textContent = "—";
         OVERALL_SCORE_CARD.classList.remove("reading", "writing");
         OVERALL_SCORE_CARD.classList.add("average");
-        SNAPSHOT_BREAKDOWN.innerHTML = [
-            `
-                <div class="mega-inline-card">
-                    <div class="label">Reading tests</div>
-                    <div class="value">0</div>
-                </div>
-            `,
-            `
-                <div class="mega-inline-card">
-                    <div class="label">Writing tests</div>
-                    <div class="value">0</div>
-                </div>
-            `,
-            `
-                <div class="mega-inline-card">
-                    <div class="label">Overall averages</div>
-                    <div class="value">Pending</div>
-                </div>
-            `,
-            `
-                <div class="mega-inline-card">
-                    <div class="label">Status</div>
-                    <div class="value">Ready for Test Mode</div>
-                </div>
-            `
-        ].join("");
-        ROW_PERFORMANCE_MOUNT.innerHTML = "";
+        renderMegaInlineCards(SNAPSHOT_BREAKDOWN, [
+            ["Reading tests", "0"],
+            ["Writing tests", "0"],
+            ["Overall averages", "Pending"],
+            ["Status", "Ready for Test Mode"]
+        ]);
+        ROW_PERFORMANCE_MOUNT.replaceChildren();
         DETAIL_TITLE.textContent = "No result selected";
         DETAIL_SUB.textContent = "Complete a test to populate this page.";
-        DETAIL_METRICS.innerHTML = "";
+        DETAIL_METRICS.replaceChildren();
         const hideBtn = document.getElementById("hideUnusedBtn");
         if (hideBtn) { hideBtn.classList.remove("active"); hideBtn.textContent = "Hide unused kana"; }
-        TEST_HEATMAP.innerHTML = `<div class="empty test-heatmap-empty">No kana data yet.</div>`;
+        TEST_HEATMAP.replaceChildren(createResultEl("div", "empty test-heatmap-empty", "No kana data yet."));
         return;
     }
     renderSnapshot(result);
@@ -710,10 +706,18 @@ function updateRowTooltip(result, script, key) {
         overlay.classList.remove("show");
         return;
     }
-    card.innerHTML = `
-        <div class="title">${row.key}</div>
-        <div class="sub">${row.isOff ? 'Modifier off for this result' : `Right: ${row.correct} · Wrong: ${row.wrong}<br>Avg time: ${formatDuration(row.avgMs)}`}</div>
-    `;
+    const title = createResultEl("div", "title", row.key);
+    const sub = createResultEl("div", "sub");
+    if (row.isOff) {
+        sub.textContent = "Modifier off for this result";
+    } else {
+        sub.append(
+            document.createTextNode(`Right: ${row.correct} · Wrong: ${row.wrong}`),
+            document.createElement("br"),
+            document.createTextNode(`Avg time: ${formatDuration(row.avgMs)}`)
+        );
+    }
+    card.replaceChildren(title, sub);
     overlay.classList.add("show");
 }
 
@@ -821,7 +825,7 @@ ROW_PERFORMANCE_MOUNT.addEventListener("click", (event) => {
     const selected = getSelectedResult();
     if (!selected) return;
     activeRowGraphView = toggleBtn.dataset.rowView === "special" ? "special" : "regular";
-    ROW_PERFORMANCE_MOUNT.innerHTML = renderRowPerformance(selected, activeRowGraphView);
+    renderRowPerformanceInto(selected, activeRowGraphView);
     drawRowCharts(selected, activeRowGraphView);
     bindRowInteractions(selected);
 });
@@ -831,16 +835,30 @@ KANA_MODAL_BACKDROP.addEventListener("click", (e) => {
     if (e.target === KANA_MODAL_BACKDROP) closeKanaModal();
 });
 
-renderAll();
-// ensure charts render
-setTimeout(() => { const selected = getSelectedResult(); if (selected) drawRowCharts(selected, activeRowGraphView); }, 50);
+function requestResultsRender(source = "unknown") {
+    try { window.ModeAtlasLifecycle?.emit?.("results-render", { source }); } catch {}
+    renderAll();
+}
 
+document.addEventListener("ma:results-render", () => {
+    const selected = getSelectedResult();
+    if (selected) drawRowCharts(selected, activeRowGraphView);
+});
+
+renderAll();
+requestAnimationFrame(() => {
+    const selected = getSelectedResult();
+    if (selected) drawRowCharts(selected, activeRowGraphView);
+});
+
+document.addEventListener("ma:ui-refresh", () => requestResultsRender("ui-refresh"));
+window.addEventListener("kanaCloudSyncStatusChanged", () => requestResultsRender("cloud-status"));
 window.addEventListener("focus", async () => {
     await window.KanaCloudSync?.hydrateFromCloud().catch(() => {});
-    renderAll();
+    requestResultsRender("focus");
 });
 document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) renderAll();
+    if (!document.hidden) requestResultsRender("visible");
 });
 window.addEventListener("storage", (event) => {
     const watchedKeys = new Set([
@@ -864,7 +882,7 @@ window.addEventListener("storage", (event) => {
         "writingTestModeResultsUpdatedAt"
     ]);
     if (!event.key || watchedKeys.has(event.key)) {
-        renderAll();
+        requestResultsRender("storage");
     }
 });
   }
